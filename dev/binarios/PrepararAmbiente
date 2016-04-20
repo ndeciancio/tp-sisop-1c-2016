@@ -1,0 +1,208 @@
+#!/bin/bash
+
+echo ""
+echo "CIPAL: Inicializando ambiente."
+echo ""
+
+IFS='
+'
+
+function echoerr {
+  echo $1 1>&2
+}
+
+function verificar_permisos {
+  modo=$1
+  case $modo in
+    [r]* ) texto_modo=lectura;;
+    [w]* ) texto_modo=escritura;;
+    [x]* ) texto_modo=ejecución;;  
+  esac
+  archivo=$2
+  if [ ! -$modo "$archivo" ]; then
+    echoerr "No se tienen permisos de $texto_modo sobre $archivo; intentando dar permisos."
+    chmod ug+$modo $archivo >/dev/null 2>&1
+    if [ ! -$modo "$archivo" ]; then 
+      echoerr "Error dando permisos de $texto_modo a $archivo" 
+      return 1
+    else
+      echo "Se le dieron permisos de $texto_modo a $archivo."
+    fi
+  else
+    dir_relativo=`echo $archivo | sed "s@$GRUPO@GRUPO@g"`
+    echo "$dir_relativo... PERMISOS OK"
+  fi
+}
+
+if [ -v AMBIENTE_INICIALIZADO ]; then
+  echoerr "El ambiente ya ha sido inicializado."
+  echoerr "Para reiniciar, cierre la sesión y vuelva a iniciar."
+  return 1
+fi
+
+RUTA_CIPAL_CONFIG="config/CIPAL.cnf"
+
+if [ ! -f "$RUTA_CIPAL_CONFIG" ]; then
+
+  if [ ! -f "../$RUTA_CIPAL_CONFIG" ]; then
+    echoerr "No se encuentra el archivo de configuración."
+    echoerr "Intente ejecutar PrepararAmbiente en el directorio de instalación."
+    return 1
+  else
+    RUTA_CIPAL_CONFIG="../$RUTA_CIPAL_CONFIG"
+  fi
+
+fi
+
+if ! verificar_permisos r "$RUTA_CIPAL_CONFIG"; then
+  return 1
+fi
+
+echo ""
+echo "Inicializando variables de entorno."
+v=0
+for registro in `cat $RUTA_CIPAL_CONFIG`; do
+  var=`echo "$registro" | cut -d= -f1`
+  val=`echo "$registro" | cut -d= -f2`
+  export $var=$val
+  variables[$v]=$var
+  echo -e "Set $var\t$val"
+  let v=$v+1
+done
+echo "Se inicializaron ${#variables[@]} variables de entorno."
+
+echo ""
+echo "Se procederá a verificar la integridad de la instalación."
+
+function buscar_archivo_en_config {
+  if [ ! -f "$CONFDIR/$1" ]; then
+    echoerr "No se encuentra el archivo $1 en el directorio de configuración."
+    echoerr "Reinstale la aplicación o contacte a un administrador para solucionar el problema."
+    return 1
+  else
+    echo "GRUPO/config/$1... OK"
+  fi
+}
+
+function extraer_faltantes {
+  dir_actual=`pwd`
+  cd "$GRUPO"
+  if [ ! -f "$GRUPO/instalacion.tar.gz" ]; then
+    echoerr "No se encuentra instalacion.tar.gz; no es posible restaurar el sistema."
+    echoerr "Contacte a un administrador para solucionar el problema."
+    return 1
+  fi
+  for archivo in $@; do
+    if tar -tzf instalacion.tar.gz $archivo >/dev/null 2>&1; then
+      echo "$archivo... OK"
+      tar -xzf instalacion.tar.gz $archivo
+    else
+      echoerr "$archivo... NO ENCONTRADO; No es posible reparar la instalación."
+      echoerr "Contacte a un administrador para solucionar el problema."
+      return 1
+    fi
+  done
+  cd "$dir_actual"
+}
+
+echo ""
+echo "Verificando existencia de directorios."
+if ! buscar_archivo_en_config directorios.lst || ! verificar_permisos r "$CONFDIR/directorios.lst"; then
+  return 1
+fi
+
+i=0
+for directorio in `cat "$CONFDIR/directorios.lst"`; do
+  resultado=OK
+  if [ ! -d "$GRUPO/$directorio" ]; then
+    directorios_no_encontrados[$i]="$directorio"
+    resultado="NO ENCONTRADO"
+    let i=$i+1
+  fi
+  echo "GRUPO/$directorio... $resultado"
+done
+
+if [ ${#directorios_no_encontrados[@]} -gt 0 ]; then
+  echo "Intentando restaurar ${#directorios_no_encontrados[@]} directorio/s faltantes."
+  if ! extraer_faltantes ${directorios_no_encontrados[@]}; then
+    return 1
+  fi
+fi
+
+echo ""
+echo "Verificando existencia de archivos."
+if ! buscar_archivo_en_config inventario.lst || ! verificar_permisos r "$CONFDIR/inventario.lst"; then
+  return 1
+fi
+
+i=0
+for archivo in `cat "$CONFDIR/inventario.lst"`; do
+  resultado=OK
+  if [ ! -f "$GRUPO/$archivo" ]; then
+    no_encontrados[$i]=$archivo
+    resultado="NO ENCONTRADO"
+    let i=$i+1
+  fi
+  echo "GRUPO/$archivo... $resultado"
+done
+
+if [ ${#no_encontrados[@]} -gt 0 ]; then
+  echo "Intentando restaurar ${#no_encontrados[@]} archivo/s faltantes."
+  if ! extraer_faltantes ${no_encontrados[@]}; then
+    return 1
+  fi
+fi
+
+unset directorios_no_encontrados
+unset no_encontrados
+
+echo ""
+echo "Verificando permisos sobre los ejecutables."
+for archivo in `ls -1 "$BINDIR" 2>/dev/null`; do
+  if ! verificar_permisos x "$BINDIR/$archivo"; then
+    return 1
+  fi
+done
+
+echo ""
+echo "Verificando permisos sobre los archivos de datos."
+for archivo in `ls -1 "$MAEDIR" 2>/dev/null`; do
+  if ! verificar_permisos r "$MAEDIR/$archivo"; then
+    return 1
+  fi
+done
+
+export AMBIENTE_INICIALIZADO=1
+echo ""
+echo "El ambiente ha sido inicializado exitosamente."
+
+function iniciar_recibir_ofertas {
+  echo "Iniciando el servicio de escucha de ofertas."
+  if [ -f "$BINDIR/RecibirOfertas" ] -a [ -x "$BINDIR/RecibirOfertas" ]; then
+    if ps | grep RecibirOfertas >/dev/null 2>&1; then
+      echoerr "RecibirOfertas ya se encuentra en ejecución;"
+      echoerr "use DetenerProceso para terminar el proceso."
+      return 1
+    fi
+    # EJECUTAR RecibirOfertas CON LanzarProceso
+  else
+    echoerr "RecibirOfertas no existe o no es ejecutable."
+    return 1
+  fi
+}
+
+function informar_sobre_lanzar_proceso {
+  echo "RecibirOfertas no se iniciará en este momento;"
+  echo "Para iniciar el servicio, use LanzarProceso."
+}
+
+while true; do
+  read -p "¿Desea iniciar el servicio de escucha de ofertas? si/no " sino
+  case $sino in
+    [si]* ) echo ""; if ! iniciar_recibir_ofertas; then return 1; fi; break;;
+    [no]* ) echo ""; informar_sobre_lanzar_proceso; break;;
+    * ) echo "Por favor, responder si o no.";;
+  esac
+done
+
+echo ""
