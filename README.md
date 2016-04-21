@@ -5,7 +5,9 @@
 Ejecutar como: . ./PrepararAmbiente en el directorio de instalación o en el directorio de los binarios.
 
 Nota 1: el instalador todavía no está arriba; igualmente PrepararAmbiente debería funcionar.
+
 Nota 2: falta que PrepararAmbiente loguee con los utilitarios de bitácoras, porque todavía no están.
+
 Nota 3: falta que PrepararAmbiente lance RecibirOfertas, porque faltan LanzarProceso y DetenerProceso.
 
 1. Verifica si el ambiente fue inicializado. Cuando PrepararAmbiente finaliza exitosamente, guarda la variable AMTIENTE_INICIALIZADO con valor 1.
