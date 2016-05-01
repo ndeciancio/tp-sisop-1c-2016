@@ -17,7 +17,13 @@ if ! echo $TIPOMSJ | grep -e "^\(INFO\|WAR\|ERR\)$" >/dev/null 2>&1; then
 fi
 
 ARCHIVO="$LOGDIR/$COMANDO.log"
-LINEAS=`cat $ARCHIVO | wc -l`
+
+if [ -f $ARCHIVO ]; then
+  LINEAS=`cat $ARCHIVO | wc -l`
+else
+  LINEAS=0
+fi
+
 if [ $LINEAS -ge $LOGSIZE ]; then
   indice_inicial=`echo "$LINEAS - $LOGSIZE + 2" | bc`
   sed -i -n "$indice_inicial,$ p" $ARCHIVO

@@ -1,0 +1,21 @@
+#!/bin/bash
+
+PROC=proc
+COMANDO=$1
+
+if [ ! -f $BINDIR/$COMANDO ]; then
+  echo "Error: no existe el comando $COMANDO" >&2
+  exit 1
+fi 
+
+if ! grep $COMANDO $TEMPDIR/$PROC >/dev/null 2>&1; then
+  echo "Error: el comando no se encuentra en ejecución."
+  exit 1
+fi
+
+PID=`grep $COMANDO $TEMPDIR/$PROC | cut -d\| -f1`
+if kill $PID; then
+  sed -i "/$PID|$COMANDO/d" $TEMPDIR/$PROC
+else
+  echo "Error: no se pudo detener el proceso." >&2
+fi
