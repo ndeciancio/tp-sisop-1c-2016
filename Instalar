@@ -98,3 +98,7 @@ done
 
 rm ${LISTADO_DIRECTORIOS}
 rm ${LISTADO_VARIABLES_ADICIONALES}
+
+if [ -f empaquetar.sh ]; then
+  rm empaquetar.sh
+fi
