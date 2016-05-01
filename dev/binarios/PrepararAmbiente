@@ -175,16 +175,12 @@ done
 export AMBIENTE_INICIALIZADO=1
 echo ""
 echo "El ambiente ha sido inicializado exitosamente."
+$BINDIR/LanzarProceso -c GrabarBitacora PrepararAmbiente "Ambiente inicializado OK" INFO
 
 function iniciar_recibir_ofertas {
   echo "Iniciando el servicio de escucha de ofertas."
   if [ -f "$BINDIR/RecibirOfertas" ] -a [ -x "$BINDIR/RecibirOfertas" ]; then
-    if ps | grep RecibirOfertas >/dev/null 2>&1; then
-      echoerr "RecibirOfertas ya se encuentra en ejecución;"
-      echoerr "use DetenerProceso para terminar el proceso."
-      return 1
-    fi
-    # EJECUTAR RecibirOfertas CON LanzarProceso
+    $BINDIR/LanzarProceso -s -b -c RecibirOfertas
   else
     echoerr "RecibirOfertas no existe o no es ejecutable."
     return 1
