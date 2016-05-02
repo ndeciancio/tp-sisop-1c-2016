@@ -1,0 +1,26 @@
+#!/bin/bash
+
+PROC=proc
+COMANDO=$1
+
+function echoerr {
+  $BINDIR/GrabarBitacora DetenerProceso "$1" ERR
+}
+
+if [ ! -f $BINDIR/$COMANDO ]; then
+  echoerr "No existe el comando $COMANDO"
+  exit 1
+fi 
+
+if ! grep $COMANDO $TEMPDIR/$PROC >/dev/null 2>&1; then
+  echoerr "El comando no se encuentra en ejecución."
+  exit 1
+fi
+
+PID=`grep $COMANDO $TEMPDIR/$PROC | cut -d\| -f1`
+if kill $PID; then
+  sed -i "/$PID|$COMANDO/d" $TEMPDIR/$PROC
+else
+  echoerr "No se pudo detener el proceso."
+  exit 1
+fi

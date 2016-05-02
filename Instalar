@@ -1,0 +1,104 @@
+GRUPO=`pwd`
+USUARIO=`whoami`
+NOMBRE_TAR="instalacion.tar.gz"
+LISTADO_DIRECTORIOS="directorios.lst"
+LISTADO_VARIABLES_ADICIONALES="variables.lst"
+ARCHIVO_CONFIGURACION="config/CIPAL.cnf"
+
+function echoerr {
+  echo $1 1>&2
+}
+
+function getTimestampConfig {
+  echo `date +"%d/%m/%Y %H:%M:%S"`
+}
+
+function extraerInfo {
+  echo "$1" | cut -d= -f$2
+}
+
+# Comenzamos descomprimiendo el archivo
+# que contiene la instalación. En caso de no existir
+# dicho archivo, el programa finaliza con un error.
+
+if [ ! -f ${NOMBRE_TAR} ]; then
+  echoerr "ERROR: No se encuentra el archivo ${NOMBRE_TAR}."
+  exit 1
+fi
+
+tar -xzf "${NOMBRE_TAR}"
+
+# Procedemos a generar el archivo de configuración.
+# Dicho archivo se genera en dos etapas.
+
+# La primera etapa de la generación del archivo de configuración
+# consiste en la adición de las variables que referencian directorios 
+# dentro de la aplicación.
+
+echo "GRUPO=$GRUPO=$USUARIO=$(getTimestampConfig)" > $ARCHIVO_CONFIGURACION
+
+for registro in `cat ${LISTADO_DIRECTORIOS}`; do
+
+  # El nombre de la variable se almacena en el primer campo del registro.
+  # El nombre del directorio se almacena en el segundo campo del registro.
+  nombre_variable=$(extraerInfo "${registro}" 1)
+  nombre_directorio=$(extraerInfo "${registro}" 2)
+
+  nombre_directorio="${GRUPO}/${nombre_directorio}"
+
+  # En el archivo de configuración, cada registro tiene un timestamp
+  # que identifica el momento en el que éste fue creado.
+  fecha_y_hora=$(getTimestampConfig)
+
+  # Generamos la salida y la escribimos al archivo de configuración.
+  salida="${nombre_variable}=${nombre_directorio}=${USUARIO}=${fecha_y_hora}"
+  echo ${salida} >> ${ARCHIVO_CONFIGURACION}
+
+done
+
+# La segunda etapa consiste en la grabación de variables adicionales,
+# que no referencian directorios.
+
+for registro in `cat ${LISTADO_VARIABLES_ADICIONALES}`; do
+
+  # El formato del archivo de variables adicionales es el mismo
+  # que el del archivo de directorios.
+  nombre_variable=$(extraerInfo ${registro} 1)
+  valor_variable=$(extraerInfo ${registro} 2)
+
+  # Obtenemos el timestamp.
+  fecha_y_hora=$(getTimestampConfig)
+
+  # Grabamos la salida.
+  salida="${nombre_variable}=${valor_variable}=${USUARIO}=${fecha_y_hora}"
+  echo ${salida} >> ${ARCHIVO_CONFIGURACION}
+
+done
+
+IFS='
+'
+
+for archivo in `ls -1`; do
+  if [ -d $archivo ]; then
+    echo $archivo >> config/directorios.lst
+  fi
+done
+
+for archivo in `ls -1 binarios 2>/dev/null`; do
+  if [ -f "binarios/$archivo" ]; then
+    echo "binarios/$archivo" >> config/inventario.lst
+  fi
+done
+
+for archivo in `ls -l maestros 2>/dev/null`; do
+  if [ -f "maestros/$archivo" ]; then
+    echo "maestros/$archivo" >> config/inventario.lst
+  fi
+done
+
+rm ${LISTADO_DIRECTORIOS}
+rm ${LISTADO_VARIABLES_ADICIONALES}
+
+if [ -f empaquetar.sh ]; then
+  rm empaquetar.sh
+fi

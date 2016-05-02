@@ -1,0 +1,62 @@
+#!/bin/bash
+
+PROC=proc
+
+function echoerr {
+  $BINDIR/GrabarBitacora LanzarProceso "$1" ERR
+}
+
+if [ ! -v AMBIENTE_INICIALIZADO ]; then
+  echoerr "El ambiente no ha sido inicializado."
+  exit 1
+fi
+
+# Limpiar temporario de procesos.
+if [ -f $TEMPDIR/$PROC ]; then
+  for proceso in `cat $TEMPDIR/$PROC`; do
+    PID=`echo $proceso | cut -d\| -f1`
+    CMD=`echo $proceso | cut -d\| -f2`
+    if ! ps -p $PID -o comm= | grep "LanzarProceso" >/dev/null 2>&1; then
+      sed -i "/$PID|$CMD/d" $TEMPDIR/$PROC
+    fi
+  done
+fi
+
+while getopts "sbc:" option; do
+  case $option in
+    s) SERVICIO=1;;
+    b) BITACORA=1;;
+    c) COMANDO=$OPTARG;;
+  esac
+done
+
+if [ ! -v COMANDO ]; then
+  echoerr "Modo de uso: LanzarProceso [-sb] -c <ejecutable>"
+  exit 1
+fi
+
+shift $((OPTIND-1))
+
+if [ ! -f $BINDIR/$COMANDO ] || [ ! -x $BINDIR/$COMANDO ]; then
+  echoerr "El comando no existe o no se tienen permisos de ejecución."
+  exit 1
+fi
+
+if [ -f $TEMPDIR/$PROC ] && cat $TEMPDIR/$PROC | grep $COMANDO >/dev/null 2>&1; then
+  PID=`cat $TEMPDIR/$PROC | grep $COMANDO | cut -d\| -f1`
+  echoerr "El comando ya se encuentra en ejecución con PID $PID" 
+  exit 1
+fi
+
+echo "Ejecutando $COMANDO"
+if [ -v SERVICIO ] && [ $SERVICIO -eq 1 ]; then
+  $BINDIR/$COMANDO $@ &>/dev/null &
+  PID=$!
+  echo "$PID|$COMANDO" > $TEMPDIR/$PROC
+else
+  $BINDIR/$COMANDO $@
+fi
+
+if [ -v BITACORA ] && [ $BITACORA -eq 1 ]; then
+  $BINDIR/GrabarBitacora $COMANDO "Ejecutando $COMANDO; PID: $PID" INFO
+fi

@@ -1,0 +1,47 @@
+#!/bin/bash
+
+if [ $# -lt 2 ]; then
+  echo "Modo de uso:"
+  echo "GrabarBitacora <comando> <mensaje> [<INFO|WAR|ERR>]"
+  exit 1
+fi
+
+while getopts "s" option; do
+  case $option in
+    s) SILENT=1;;
+  esac
+done
+
+shift $((OPTIND-1))
+
+USUARIO=`whoami`
+FECHAYHORA=`date`
+COMANDO=$1
+TIPOMSJ=$3
+MENSAJE=$2
+
+if ! echo $TIPOMSJ | grep -e "^\(INFO\|WAR\|ERR\)$" >/dev/null 2>&1; then
+  TIPOMSJ=INFO
+fi
+
+ARCHIVO="$LOGDIR/$COMANDO.log"
+
+if [ -f $ARCHIVO ]; then
+  LINEAS=`cat $ARCHIVO | wc -l`
+else
+  LINEAS=0
+fi
+
+if [ $LINEAS -ge $LOGSIZE ]; then
+  indice_inicial=`echo "$LINEAS - $LOGSIZE + 2" | bc`
+  sed -i -n "$indice_inicial,$ p" $ARCHIVO
+fi
+
+echo "$USUARIO|$FECHAYHORA|$COMANDO|$TIPOMSJ|$MENSAJE" >> $ARCHIVO
+
+if [ ! -v SILENT ]; then
+  case $TIPOMSJ in
+    INFO|WAR) echo "$TIPOMSJ $MENSAJE";;
+    ERR) echo "$TIPOMSJ $MENSAJE" >&2;;
+  esac
+fi
