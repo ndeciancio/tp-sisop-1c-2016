@@ -9,6 +9,7 @@ OKDIR="/home/nicolas/Documents/SistemasOperativos/Pruebas/OKDIR"
 NOKDIR="/home/nicolas/Documents/SistemasOperativos/Pruebas/NOKDIR"
 MOVER="/home/nicolas/Documents/SistemasOperativos/Pruebas"
 CONCESIONARIOS="/home/nicolas/Downloads/MaestrosyTablas_TemaL/concesionarios.csv"
+LIBDIR=""
 
 function verificarCodigo() {
 	if grep ";$1" $CONCESIONARIOS >/dev/null; then
@@ -34,45 +35,52 @@ function fechaValida() {
 
 while true  
         do
-        echo "Ciclo Num: $ciclo"
+        ${LIBDIR}/GrabarBitacora.sh "RecibirOfertas" "Ciclo nro. $ciclo" "INFO"
         ciclo=$((ciclo+1))
-        FILES=$(ls -A $ARRIDIR/* 2>/dev/null) 
+        FILES=$(ls -A ${ARRIDIR}/* 2>/dev/null) 
         if test "$FILES";
         	then 
         	SAVEIFS=$IFS
         	IFS=$(echo -en "\n\b")
         	for fileName in $FILES; 
         	do
-        		if [ -s $fileName -a -f $fileName -a ${fileName: -4} == ".txt" ]
+        		echo $fileName
+        		if [ -s $fileName -a -f $fileName ] && [[ ( $fileName == *.csv.* ) || ( $fileName == *.csv ) ]] #Verifico que el archivo no este vacio, sea un archivo regular y tenga terminacion .csv
         			then
-        			if [[ $fileName == *_* ]]; then
+        			if [[ $fileName == *_* ]]; then #Verifico que tenga el formato de codigoConcesionario_Fecha
         				pathOrigen=${fileName%/*} #Me quedo con el path sin el nombre de archivo a levantar
 						nombreFile=$(basename $fileName) #Nos quedamos solo con el nombre de file.
 						codigoConcesionario=${nombreFile%_*} #Me quedo con el numero de concesionario
 						auxiliarParaFecha=$(echo $nombreFile| cut -d'_' -f 2)
-						valorFecha=${auxiliarParaFecha%.*}
-        				if verificarCodigo $codigoConcesionario; then
-        					if fechaValida $valorFecha; then
+						#valorFecha=${auxiliarParaFecha%.*}
+						valorFecha=$(echo $auxiliarParaFecha | cut -f 1 -d '.') #Me quedo con el numero de fecha
+        				if verificarCodigo $codigoConcesionario; then #Verifico que sea un numero de concesionario valido
+        					if fechaValida $valorFecha; then #Verifico que sea una fecha valida
         						#Archivo correcto
-        						$MOVER/MoverArchivos.sh $fileName $OKDIR RecibirOfertas
-        						echo "MOVER ARCHIVO $nombreFile A LA CARPETA"
+        						$MOVER/MoverArchivos.sh $fileName ${OKDIR} RecibirOfertas
+        						
         					else
-        						echo "Fecha INVALIDA"
+        						${LIBDIR}/GrabarBitacora.sh "RecibirOfertas" "El archivo $nombreFile fue rechazado por ser de una fecha invalida" "INFO"
+        						$MOVER/MoverArchivos.sh $fileName ${NOKDIR} RecibirOfertas
+        						
         					fi
         				else
-        					echo "codigo invalido"
-        					#Archivo Incorrecto
+        					${LIBDIR}/GrabarBitacora.sh "RecibirOfertas" "El archivo $nombreFile fue rechazado por ser de un concesionario inexistente" "INFO"
+        					$MOVER/MoverArchivos.sh $fileName ${NOKDIR} RecibirOfertas
         				fi
         			else
-        				echo "formato incorrecto"
-        				#Archivo Incorrecto
+        				${LIBDIR}/GrabarBitacora.sh "RecibirOfertas" "El archivo $nombreFile fue rechazado por no respetar el formato correcto en el nombre del archivo" "INFO"
+        				$MOVER/MoverArchivos.sh $fileName ${NOKDIR} RecibirOfertas
+        				
+        				
         			fi
 
 
 
 				else
-					#Archivo Incorrecto
-        			echo "Archivo Malo"
+					${LIBDIR}/GrabarBitacora.sh "RecibirOfertas" "El archivo "$nombreFile" fue rechazado por ser un tipo de archivo invalido" "INFO"
+					$MOVER/MoverArchivos.sh $fileName ${NOKDIR} RecibirOfertas
+        			
         		fi;
 
         	done
@@ -85,7 +93,7 @@ while true
         	echo "NO Hay Archivos"
         fi;
 
-        filesInOKDIR=$(ls -A $OKDIR/* 2>/dev/null) 
+        filesInOKDIR=$(ls -A ${OKDIR}/* 2>/dev/null) 
         if test "$filesInOKDIR"; then
         	echo "Ejecutar Procesar Ofertas"
         fi
@@ -93,7 +101,3 @@ while true
         sleep $SLEEPTIME
 done  
 
-
-
-
-function

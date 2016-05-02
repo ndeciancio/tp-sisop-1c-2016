@@ -17,10 +17,9 @@ rutaOrigen="$1"
 rutaDestino="$2"
 comandoInvocante="$3"
 
-
 function chequearRuta(){
 	ruta="$1"
-	if ( [ -f  $ruta ] ) #Chequeamos formato de la ruta de origen.
+	if ( [ -f  "$ruta" ] ) #Chequeamos formato de la ruta de origen.
   	then    
           	if  [[ ! (-e  "$ruta") ]]  #Chequeamos si existe el file.
           	then    
@@ -55,7 +54,7 @@ fi
 
 #Chequeamos las rutas
 #Ruta Origen
-chequearRuta $rutaOrigen "origen"
+chequearRuta "$rutaOrigen" "origen"
 resultadoChequearRuta=$?
 
 if ( [ $resultadoChequearRuta -ne 0 ]  ) 
