@@ -32,10 +32,10 @@ do
   cambiar_indices $index_a $index_b
 done
 
-#entrada=$MAEDIR/FechasAdj.csv
-#salida=$PROCDIR/sorteos/
-entrada="/home/fran/Downloads/asdddd/MaestrosyTablas_TemaL/FechasAdj.csv"
-ruta_salida="/home/fran/Downloads/asdddd"
+entrada="$MAEDIR/FechasAdj.csv"
+ruta_salida="$PROCDIR/sorteos"
+#entrada="/home/fran/Downloads/asdddd/MaestrosyTablas_TemaL/FechasAdj.csv"
+#ruta_salida="/home/fran/Downloads/asdddd"
 
 # Se esta trayendo la ultima fecha, nose si es lo esperado o se tiene que dejar como un parametro esto
 ultima_fecha=$(tail -1 $entrada)
@@ -55,7 +55,7 @@ done
 echo "Inicio de Sorteo" > $salida
 for i in $(seq 1 $RANGO)
 do
-echo "Numero de orden $i le corresponde el numero de sorteo ${numeros[$i]}" >> $salida
+echo "$i; ${numeros[$i]}" >> $salida
 done
 echo "Fin de Sorteo" >> $salida
 
