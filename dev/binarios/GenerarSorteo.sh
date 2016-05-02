@@ -42,7 +42,7 @@ ultima_fecha=$(tail -1 $entrada)
 ultima_fecha=$(echo ${ultima_fecha%%;*} | sed 's!/!-!g')
 
 # Si ya existen sorteos en la fecha se aumenta el numero de id
-salida=$ruta_salida"/1_"$ultima_fecha
+salida=$ruta_salida"/1_"$ultima_fecha".csv"
 count=1
 while [ -f $salida ]
 do
