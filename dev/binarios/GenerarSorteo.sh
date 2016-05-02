@@ -52,14 +52,12 @@ done
 
 
 # Esto hay que loguearlo ademas de meterlo en la salida, nose si el inicio y fin de sorteo van solo al log o tmb al archivo
-echo "Inicio de Sorteo" > $salida
 $BINDIR/GrabarBitacora PrepararAmbiente "Inicio de Sorteo" INFO
 for i in $(seq 1 $RANGO)
 do
-    echo "$i; ${numeros[$i]}" >> $salida
+    echo "$i;${numeros[$i]}" >> $salida
     $BINDIR/GrabarBitacora PrepararAmbiente "Numero de orden $i le corresponde el numero de sorteo ${numeros[$i]}" INFO
 done
-echo "Fin de Sorteo" >> $salida
 $BINDIR/GrabarBitacora PrepararAmbiente "Fin de Sorteo" INFO
 
 echo "Sorteo generado"
