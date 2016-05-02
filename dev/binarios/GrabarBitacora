@@ -6,6 +6,14 @@ if [ $# -lt 2 ]; then
   exit 1
 fi
 
+while getopts "s" option; do
+  case $option in
+    s) SILENT=1;;
+  esac
+done
+
+shift $((OPTIND-1))
+
 USUARIO=`whoami`
 FECHAYHORA=`date`
 COMANDO=$1
@@ -30,3 +38,10 @@ if [ $LINEAS -ge $LOGSIZE ]; then
 fi
 
 echo "$USUARIO|$FECHAYHORA|$COMANDO|$TIPOMSJ|$MENSAJE" >> $ARCHIVO
+
+if [ ! -v SILENT ]; then
+  case $TIPOMSJ in
+    INFO|WAR) echo "$TIPOMSJ $MENSAJE";;
+    ERR) echo "$TIPOMSJ $MENSAJE" >&2;;
+  esac
+fi

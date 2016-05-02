@@ -3,11 +3,11 @@
 PROC=proc
 
 function echoerr {
-  echo $1 >&2
+  $BINDIR/GrabarBitacora LanzarProceso "$1" ERR
 }
 
 if [ ! -v AMBIENTE_INICIALIZADO ]; then
-  echoerr "Error: el ambiente no ha sido inicializado."
+  echoerr "El ambiente no ha sido inicializado."
   exit 1
 fi
 
@@ -38,13 +38,13 @@ fi
 shift $((OPTIND-1))
 
 if [ ! -f $BINDIR/$COMANDO ] || [ ! -x $BINDIR/$COMANDO ]; then
-  echoerr "Error: el comando no existe o no se tienen permisos de ejecución."
+  echoerr "El comando no existe o no se tienen permisos de ejecución."
   exit 1
 fi
 
 if [ -f $TEMPDIR/$PROC ] && cat $TEMPDIR/$PROC | grep $COMANDO >/dev/null 2>&1; then
   PID=`cat $TEMPDIR/$PROC | grep $COMANDO | cut -d\| -f1`
-  echoerr "Error: el comando ya se encuentra en ejecución con PID $PID" 
+  echoerr "El comando ya se encuentra en ejecución con PID $PID" 
   exit 1
 fi
 
