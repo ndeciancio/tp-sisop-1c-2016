@@ -57,14 +57,21 @@ done < $MAEDIR/FechasAdj.csv
 ultima_fecha=$fecha_adj
 
 # Si ya existen sorteos en la fecha se aumenta el numero de id
-salida=$ruta_salida"/1_"$ultima_fecha".csv"
+#salida=$ruta_salida"/1_"$ultima_fecha".csv"
+#count=1
+#while [ -f $salida ]
+#do
+#    let count++
+#    salida=$ruta_salida"/"$count"_"$ultima_fecha".csv"
+#done
+
+# Si ya existen sorteos con ese id se aumenta el numero de id
 count=1
-while [ -f $salida ]
+while ls "$ruta_salida" | grep "^$count\_" > /dev/null
 do
     let count++
-    salida=$ruta_salida"/"$count"_"$ultima_fecha
 done
-
+salida="$ruta_salida/$count"_"$ultima_fecha.csv"
 
 # Esto hay que loguearlo ademas de meterlo en la salida, nose si el inicio y fin de sorteo van solo al log o tmb al archivo
 $BINDIR/GrabarBitacora GenerarSorteo "Inicio de Sorteo" INFO
