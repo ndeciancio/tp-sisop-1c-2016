@@ -5,7 +5,7 @@
 SLEEPTIME=30
 ciclo=1
 MOVER=$BINDIR
-CONCESIONARIOS="$MAEDIR/concesionarios.csv"
+CONCESIONARIOS="$MAEDIR/concesionarios.csv.xls"
 LIBDIR=$BINDIR
 
 function verificarCodigo() {
