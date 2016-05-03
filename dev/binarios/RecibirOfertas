@@ -4,12 +4,9 @@
 
 SLEEPTIME=30
 ciclo=1
-ARRIDIR="/home/nicolas/Documents/SistemasOperativos/Pruebas/ARRIDIR"
-OKDIR="/home/nicolas/Documents/SistemasOperativos/Pruebas/OKDIR"
-NOKDIR="/home/nicolas/Documents/SistemasOperativos/Pruebas/NOKDIR"
-MOVER="/home/nicolas/Documents/SistemasOperativos/Pruebas"
-CONCESIONARIOS="/home/nicolas/Downloads/MaestrosyTablas_TemaL/concesionarios.csv"
-LIBDIR=""
+MOVER=$BINDIR
+CONCESIONARIOS="$MAEDIR/concesionarios.csv"
+LIBDIR=$BINDIR
 
 function verificarCodigo() {
 	if grep ";$1" $CONCESIONARIOS >/dev/null; then
@@ -35,7 +32,7 @@ function fechaValida() {
 
 while true  
         do
-        ${LIBDIR}/GrabarBitacora.sh "RecibirOfertas" "Ciclo nro. $ciclo" "INFO"
+        ${LIBDIR}/GrabarBitacora "RecibirOfertas" "Ciclo nro. $ciclo" "INFO"
         ciclo=$((ciclo+1))
         FILES=$(ls -A ${ARRIDIR}/* 2>/dev/null) 
         if test "$FILES";
@@ -60,16 +57,16 @@ while true
         						$MOVER/MoverArchivos.sh $fileName ${OKDIR} RecibirOfertas
         						
         					else
-        						${LIBDIR}/GrabarBitacora.sh "RecibirOfertas" "El archivo $nombreFile fue rechazado por ser de una fecha invalida" "INFO"
+        						${LIBDIR}/GrabarBitacora "RecibirOfertas" "El archivo $nombreFile fue rechazado por ser de una fecha invalida" "INFO"
         						$MOVER/MoverArchivos.sh $fileName ${NOKDIR} RecibirOfertas
         						
         					fi
         				else
-        					${LIBDIR}/GrabarBitacora.sh "RecibirOfertas" "El archivo $nombreFile fue rechazado por ser de un concesionario inexistente" "INFO"
+        					${LIBDIR}/GrabarBitacora "RecibirOfertas" "El archivo $nombreFile fue rechazado por ser de un concesionario inexistente" "INFO"
         					$MOVER/MoverArchivos.sh $fileName ${NOKDIR} RecibirOfertas
         				fi
         			else
-        				${LIBDIR}/GrabarBitacora.sh "RecibirOfertas" "El archivo $nombreFile fue rechazado por no respetar el formato correcto en el nombre del archivo" "INFO"
+        				${LIBDIR}/GrabarBitacora "RecibirOfertas" "El archivo $nombreFile fue rechazado por no respetar el formato correcto en el nombre del archivo" "INFO"
         				$MOVER/MoverArchivos.sh $fileName ${NOKDIR} RecibirOfertas
         				
         				
@@ -78,7 +75,7 @@ while true
 
 
 				else
-					${LIBDIR}/GrabarBitacora.sh "RecibirOfertas" "El archivo "$nombreFile" fue rechazado por ser un tipo de archivo invalido" "INFO"
+					${LIBDIR}/GrabarBitacora "RecibirOfertas" "El archivo "$nombreFile" fue rechazado por ser un tipo de archivo invalido" "INFO"
 					$MOVER/MoverArchivos.sh $fileName ${NOKDIR} RecibirOfertas
         			
         		fi;

@@ -11,7 +11,7 @@
 	#Parametro 2(Obligatorio): Destino
 	#Parametro 3(Opcional): Comando que invoca el moverC
 
-LIBDIR="" #Ruta del loger
+LIBDIR=$BINDIR #Ruta del loger
 
 rutaOrigen="$1"
 rutaDestino="$2"
@@ -23,11 +23,11 @@ function chequearRuta(){
   	then    
           	if  [[ ! (-e  "$ruta") ]]  #Chequeamos si existe el file.
           	then    
-                	${LIBDIR}/GrabarBitacora.sh "$comandoInvocante" "La ruta $2 no existe" "ERR"
+                	${LIBDIR}/GrabarBitacora "$comandoInvocante" "La ruta $2 no existe" "ERR"
 			return 2
   		fi
 	else
-        	${LIBDIR}/GrabarBitacora.sh "$comandoInvocante" "El formato de la ruta $2 es incompatible" "ERR" 
+        	${LIBDIR}/GrabarBitacora "$comandoInvocante" "El formato de la ruta $2 es incompatible" "ERR" 
 		return 1
   	fi
 
@@ -65,7 +65,7 @@ fi
 #Ruta Destino
 if [[ ! (-d "$rutaDestino") ]] #Chequamos que es un directorio
 then
-    	${LIBDIR}/GrabarBitacora.sh "$comandoInvocante" "Error en el ingreso del archivo destino, el directorio no existe." "ERR"
+    	${LIBDIR}/GrabarBitacora "$comandoInvocante" "Error en el ingreso del archivo destino, el directorio no existe." "ERR"
         exit 1
 fi
 
@@ -77,7 +77,7 @@ existeArchivo=$?
 #Corroboramos si existe el file en el destino
 if ( [ $existeArchivo -ne 0 ] )
 then
-	${LIBDIR}/GrabarBitacora.sh "$comandoInvocante" "Ya existe el archivo $nombreFile en $rutaDestino , se procede a hacer el duplicado." "WAR"
+	${LIBDIR}/GrabarBitacora "$comandoInvocante" "Ya existe el archivo $nombreFile en $rutaDestino , se procede a hacer el duplicado." "WAR"
 
         if [[ ! (-d "$rutaDestino/dup") ]] #Comprobamos que exista la carpeta de depulicados y si no existe
         then
@@ -85,7 +85,7 @@ then
 		mkdir   "${rutaDestino}/dup" #creamos el directorio
                 if [ -d "${rutaDestino}/dup" ] #nos fijamos si fue correcta la creacion
                 then
-                        ${LIBDIR}/GrabarBitacora.sh "$comandoInvocante" "Se creo correctamente el directorio /dup en $rutaDestino." "INFO"
+                        ${LIBDIR}/GrabarBitacora "$comandoInvocante" "Se creo correctamente el directorio /dup en $rutaDestino." "INFO"
                         nuevoNombreFile="${nombreFile}.1"  #Nuevo nombre de archivo
                 else
                         ${LIBDIR}/loguearC.sh "$comandoInvocante" "Error al crear el directorio /dup en $rutaDestino." "ERR"
@@ -103,8 +103,8 @@ then
 	        rm "$rutaOrigen" #Removemos el archivo original de su origen
        		if [ $cantidadParametros -eq 3 ]
         	then
-        		${LIBDIR}/GrabarBitacora.sh "$comandoInvocante" "El comando $comandoInvocante ejecutó el comando move." "INFO"
-        		${LIBDIR}/GrabarBitacora.sh "$comandoInvocante" "Se movio correctamente el archivo  $nombreFile  al destino ${rutaDestino}/dup ." "INFO"
+        		${LIBDIR}/GrabarBitacora "$comandoInvocante" "El comando $comandoInvocante ejecutó el comando move." "INFO"
+        		${LIBDIR}/GrabarBitacora "$comandoInvocante" "Se movio correctamente el archivo  $nombreFile  al destino ${rutaDestino}/dup ." "INFO"
         	fi
 	else
 		exit 1
@@ -113,8 +113,8 @@ else
 	mv "$rutaOrigen" "$rutaDestino" #muevo el archivo al destino ya que no es duplicado
         if [ $cantidadParametros -eq 3  ] #Si viene comando invocante, informo resultados
         then
-                ${LIBDIR}/GrabarBitacora.sh "$comandoInvocante" "El comando $comandoInvocante ejecutó el comando move." "INFO"
-                ${LIBDIR}/GrabarBitacora.sh "$comandoInvocante" "Se movio correctamente el archivo $nombreFile  al destino $rutaDestino." "INFO"
+                ${LIBDIR}/GrabarBitacora "$comandoInvocante" "El comando $comandoInvocante ejecutó el comando move." "INFO"
+                ${LIBDIR}/GrabarBitacora "$comandoInvocante" "Se movio correctamente el archivo $nombreFile  al destino $rutaDestino." "INFO"
         fi
 
 fi
