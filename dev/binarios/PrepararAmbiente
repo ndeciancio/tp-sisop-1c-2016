@@ -29,15 +29,44 @@ function verificar_permisos {
       echo "Se le dieron permisos de $texto_modo a $archivo."
     fi
   else
-    dir_relativo=`echo $archivo | sed "s@$GRUPO@GRUPO@g"`
-    echo "$dir_relativo... PERMISOS OK"
+    if [ -v GRUPO ]; then
+      dir_relativo=`echo $archivo | sed "s@$GRUPO@GRUPO@g"`
+      echo "$dir_relativo... PERMISOS OK"
+    fi
   fi
+}
+
+function iniciar_recibir_ofertas {
+  echo "Iniciando el servicio de escucha de ofertas."
+  if [ -f "$BINDIR/RecibirOfertas" ] && [ -x "$BINDIR/RecibirOfertas" ]; then
+    $BINDIR/LanzarProceso -s -b -c RecibirOfertas
+  else
+    echoerr "RecibirOfertas no existe o no es ejecutable."
+    return 1
+  fi
+}
+
+function informar_sobre_lanzar_proceso {
+  echo "RecibirOfertas no se iniciará en este momento;"
+  echo "Para iniciar el servicio, use LanzarProceso."
+}
+
+function iniciar_escuchar_ofertas {
+    while true; do
+      read -p "¿Desea iniciar el servicio de escucha de ofertas? si/no " sino
+      case $sino in
+        [si]* ) echo ""; if ! iniciar_recibir_ofertas; then return 1; fi; break;;
+        [no]* ) echo ""; informar_sobre_lanzar_proceso; break;;
+        * ) echo "Por favor, responder si o no.";;
+      esac
+    done
 }
 
 if [ -v AMBIENTE_INICIALIZADO ]; then
   echoerr "El ambiente ya ha sido inicializado."
   echoerr "Para reiniciar, cierre la sesión y vuelva a iniciar."
-  return 1
+  iniciar_escuchar_ofertas
+  return $?
 fi
 
 RUTA_CIPAL_CONFIG="config/CIPAL.cnf"
@@ -177,28 +206,7 @@ echo ""
 echo "El ambiente ha sido inicializado exitosamente."
 $BINDIR/GrabarBitacora PrepararAmbiente "Ambiente inicializado OK" INFO
 
-function iniciar_recibir_ofertas {
-  echo "Iniciando el servicio de escucha de ofertas."
-  if [ -f "$BINDIR/RecibirOfertas" ] -a [ -x "$BINDIR/RecibirOfertas" ]; then
-    $BINDIR/LanzarProceso -s -b -c RecibirOfertas
-  else
-    echoerr "RecibirOfertas no existe o no es ejecutable."
-    return 1
-  fi
-}
+iniciar_escuchar_ofertas
+return $?
 
-function informar_sobre_lanzar_proceso {
-  echo "RecibirOfertas no se iniciará en este momento;"
-  echo "Para iniciar el servicio, use LanzarProceso."
-}
-
-while true; do
-  read -p "¿Desea iniciar el servicio de escucha de ofertas? si/no " sino
-  case $sino in
-    [si]* ) echo ""; if ! iniciar_recibir_ofertas; then return 1; fi; break;;
-    [no]* ) echo ""; informar_sobre_lanzar_proceso; break;;
-    * ) echo "Por favor, responder si o no.";;
-  esac
-done
-
-echo ""
+# echo ""
