@@ -42,8 +42,19 @@ if [ ! -f $entrada ]; then
 fi
 
 # Se esta trayendo la ultima fecha, nose si es lo esperado o se tiene que dejar como un parametro esto
-ultima_fecha=$(tail -1 $entrada)
-ultima_fecha=$(echo ${ultima_fecha%%;*} | sed 's!/!-!g')
+
+# Localizar proxima fecha de adjudicacion
+while read -r fechas
+do
+	fechas=$(echo $fechas | cut -f1 -d';')
+	fechas=$(echo $fechas | sed 's-\([0-3][0-9]\)/\([0-1][0-9]\)/\([0-9]\{4\}\)-\3\2\1-')
+    if [ `date +%Y%m%d` -lt $fechas ]; then
+		fecha_adj=$fechas
+		break
+	fi
+done < $MAEDIR/FechasAdj.csv
+
+ultima_fecha=$fecha_adj
 
 # Si ya existen sorteos en la fecha se aumenta el numero de id
 salida=$ruta_salida"/1_"$ultima_fecha".csv"
@@ -60,7 +71,7 @@ $BINDIR/GrabarBitacora GenerarSorteo "Inicio de Sorteo" INFO
 for i in $(seq 1 $RANGO)
 do
     echo "$i;${numeros[$i]}" >> $salida
-    $BINDIR/GrabarBitacora GenerarSorteo "Numero de orden $i le corresponde el numero de sorteo ${numeros[$i]}" INFO
+    $BINDIR/GrabarBitacora -s GenerarSorteo "Numero de orden $i le corresponde el numero de sorteo ${numeros[$i]}" INFO
 done
 $BINDIR/GrabarBitacora GenerarSorteo "Fin de Sorteo" INFO
 
