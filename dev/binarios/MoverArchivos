@@ -1,6 +1,4 @@
-#! /bin/bash 
-
-#Funcion moverC - Se encarga de mover archivos de manera inteligente contemplando la posibilidad de archivos duplicados
+#!/bin/bash
 
 #Hipótesis:
 	#El número de secuencia es local a cada carpeta, es decir, se busca cuantos archivos con el mismo nombre y extensión habrá y luego se utiliza ese índice incrementado en 1 para el próximo nombre de file.
@@ -48,7 +46,7 @@ cantidadParametros=$#
 
 if ( ([ $cantidadParametros -lt 2 ] ) || ( [ $cantidadParametros -gt 3 ] ))  #Puede reemplazarse por -o todo dentro del paréntesis
 then
-	${LIBDIR}/loguearC.sh "$comandoInvocante" "Error en cantidad de parametros" "ERR"
+	${LIBDIR}/GrabarBitacora "$comandoInvocante" "Error en cantidad de parametros" "ERR"
 fi
 
 
@@ -88,7 +86,7 @@ then
                         ${LIBDIR}/GrabarBitacora "$comandoInvocante" "Se creo correctamente el directorio /dup en $rutaDestino." "INFO"
                         nuevoNombreFile="${nombreFile}.1"  #Nuevo nombre de archivo
                 else
-                        ${LIBDIR}/loguearC.sh "$comandoInvocante" "Error al crear el directorio /dup en $rutaDestino." "ERR"
+                        ${LIBDIR}/GrabarBitacora "$comandoInvocante" "Error al crear el directorio /dup en $rutaDestino." "ERR"
                         exit 1
                 fi
         else

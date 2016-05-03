@@ -54,20 +54,20 @@ while true
         				if verificarCodigo $codigoConcesionario; then #Verifico que sea un numero de concesionario valido
         					if fechaValida $valorFecha; then #Verifico que sea una fecha valida
         						#Archivo correcto
-        						$MOVER/MoverArchivos.sh $fileName ${OKDIR} RecibirOfertas
+        						$MOVER/MoverArchivos $fileName ${OKDIR} RecibirOfertas
         						
         					else
         						${LIBDIR}/GrabarBitacora "RecibirOfertas" "El archivo $nombreFile fue rechazado por ser de una fecha invalida" "INFO"
-        						$MOVER/MoverArchivos.sh $fileName ${NOKDIR} RecibirOfertas
+        						$MOVER/MoverArchivos $fileName ${NOKDIR} RecibirOfertas
         						
         					fi
         				else
         					${LIBDIR}/GrabarBitacora "RecibirOfertas" "El archivo $nombreFile fue rechazado por ser de un concesionario inexistente" "INFO"
-        					$MOVER/MoverArchivos.sh $fileName ${NOKDIR} RecibirOfertas
+        					$MOVER/MoverArchivos $fileName ${NOKDIR} RecibirOfertas
         				fi
         			else
         				${LIBDIR}/GrabarBitacora "RecibirOfertas" "El archivo $nombreFile fue rechazado por no respetar el formato correcto en el nombre del archivo" "INFO"
-        				$MOVER/MoverArchivos.sh $fileName ${NOKDIR} RecibirOfertas
+        				$MOVER/MoverArchivos $fileName ${NOKDIR} RecibirOfertas
         				
         				
         			fi
@@ -76,7 +76,7 @@ while true
 
 				else
 					${LIBDIR}/GrabarBitacora "RecibirOfertas" "El archivo "$nombreFile" fue rechazado por ser un tipo de archivo invalido" "INFO"
-					$MOVER/MoverArchivos.sh $fileName ${NOKDIR} RecibirOfertas
+					$MOVER/MoverArchivos $fileName ${NOKDIR} RecibirOfertas
         			
         		fi;
 
