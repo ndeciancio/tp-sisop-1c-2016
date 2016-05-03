@@ -92,7 +92,10 @@ while true
 
         filesInOKDIR=$(ls -A ${OKDIR}/* 2>/dev/null) 
         if test "$filesInOKDIR"; then
-        	echo "Ejecutar Procesar Ofertas"
+        	$BINDIR/LanzarProceso -s -c ProcesarOfertas
+        	if [ ! $? ]; then
+        	   	${LIBDIR}/GrabarBitacora RecibirOfertas "Invocación de ProcesarOfertas pospuesta para el siguiente ciclo" "ERROR"
+        	fi
         fi
 
         sleep $SLEEPTIME
