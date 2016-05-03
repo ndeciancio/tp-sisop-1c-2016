@@ -7,7 +7,7 @@
 
 	#Parametro 1(Obligatorio): Origen
 	#Parametro 2(Obligatorio): Destino
-	#Parametro 3(Opcional): Comando que invoca el moverC
+	#Parametro 3(Opcional): Comando que lo invoca
 
 LIBDIR=$BINDIR #Ruta del loger
 

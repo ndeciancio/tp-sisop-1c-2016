@@ -26,8 +26,6 @@ function fechaValida() {
 	else
 		return 1
 	fi
-
-	
 }
 
 while true  
