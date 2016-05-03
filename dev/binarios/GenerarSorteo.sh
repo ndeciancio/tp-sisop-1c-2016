@@ -37,6 +37,10 @@ ruta_salida="$PROCDIR/sorteos"
 #entrada="/home/fran/Downloads/asdddd/MaestrosyTablas_TemaL/FechasAdj.csv"
 #ruta_salida="/home/fran/Downloads/asdddd"
 
+if [ ! -f $entrada ]; then
+    entrada=$entrada+".xls"
+fi
+
 # Se esta trayendo la ultima fecha, nose si es lo esperado o se tiene que dejar como un parametro esto
 ultima_fecha=$(tail -1 $entrada)
 ultima_fecha=$(echo ${ultima_fecha%%;*} | sed 's!/!-!g')
