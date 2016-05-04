@@ -154,10 +154,10 @@ do
 					fi
 				fi
 			done < $OKDIR/$archivo
+			$BINDIR/GrabarBitacora "ProcesarOfertas" "Registros leídos = $cant_reg_leidos. Cantidad de ofertas válidas = $cant_ofertas_validas. Cantidad de ofertas rechazadas = $cant_ofertas_rechazadas." "INFO"
+			# Un archivo que pudo ser procesado correctamente debe moverse a procesados
+			$BINDIR/MoverArchivos $OKDIR/$archivo $PROCDIR/procesadas ProcesarOfertas
 		fi
-		$BINDIR/GrabarBitacora "ProcesarOfertas" "Registros leídos = $cant_reg_leidos. Cantidad de ofertas válidas = $cant_ofertas_validas. Cantidad de ofertas rechazadas = $cant_ofertas_rechazadas." "INFO"
-		# Un archivo que pudo ser procesado correctamente debe moverse a procesados
-		$BINDIR/MoverArchivos $OKDIR/$archivo $PROCDIR/procesadas ProcesarOfertas
 	fi
 done
 
