@@ -25,13 +25,28 @@ do
 	fi
 done < $MAEDIR/FechasAdj.csv
 
+# -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+# Pendiente: Debe loggearse la cantidad de archivos a procesar y no puede ocurrir que un archivo se procese 2 veces (puede ocurrir porque se ejecutan varios ProcesarOfertas
+# simultáneamente. Los archivos deben procesarse en orden cronológico, corregir el for
+# -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+#lista_archivos=$(ls $OKDIR | sort)
+#cantidad_archivos=$(echo $lista_archivo | wc -l)
+
+$BINDIR/GrabarBitacora "ProcesarOfertas" "Inicio de ProcesarOfertas" "INFO"
+#$BINDIR/GrabarBitacora "ProcesarOfertas" "Cantidad de archivos a procesar: $cantidad_archivos" "INFO"
+
+#for archivo in $($lista_archivos)
 for archivo in $(ls $OKDIR)
 do
+	cant_reg_leidos=0
+	cant_ofertas_validas=0
+	cant_ofertas_rechazadas=0
 	# Verifico que el archivo no este duplicado contra PROCDIR/procesados
 	exito=$(find "$PROCDIR/procesadas/" -type f -name "$archivo" | wc -l)
 	if [ $exito -ne 0 ]
 	then
 		#echo -e "\e[1;31m     Se rechaza el archivo por estar duplicado \e[0m"
+		$BINDIR/GrabarBitacora "ProcesarOfertas" "Se rechaza el archivo $archivo por estar duplicado." "ERR"
 		$BINDIR/MoverArchivos $OKDIR/$archivo $NOKDIR ProcesarOfertas
 	else
 		# Verifico la cantidad de campos del primer registro
@@ -42,9 +57,11 @@ do
 		if [ $exito -ne 0 ]
 		then
 			#echo -e "\e[1;31m     Se rechaza el archivo porque su estructura no se corresponde con el formato esperado \e[0m"
+			$BINDIR/GrabarBitacora "ProcesarOfertas" "Se rechaza el archivo $archivo porque su estructura no se corresponde con el formato esperado." "ERR"
 			$BINDIR/MoverArchivos $OKDIR/$archivo $NOKDIR ProcesarOfertas
 		else
 			#echo -e "\e[1;34m     Archivo a procesar: $archivo \e[0m"
+			$BINDIR/GrabarBitacora "ProcesarOfertas" "Archivo a procesar: $archivo." "INFO"
 			usuario=$(whoami)
 			concesionario=$(echo $archivo | sed "s/^\([^;]*\)_[^;]*$/\1/")
 			fecha_archivo=$(echo $archivo | sed "s/^[^;]*_\([^;]*\)\.[^;]*\.[^;]*$/\1/")
@@ -53,6 +70,7 @@ do
 			# Verificar Ofertas Validas
 			while read -r linea_archivo
 			do
+				let cant_reg_leidos=cant_reg_leidos+1
 				# Borro el retorno de carro que esta al final de cada linea
 				linea_archivo=$(echo $linea_archivo | sed 's/\r//')
 				contrato_fusionado=$(echo $linea_archivo | cut -c1-7)
@@ -74,6 +92,7 @@ do
 					if [ $hay_resultados -ne 0 ]
 					then
 						#echo -e "\e[1;34m Rechazado. Contrato no encontrado. \e[0m"
+						let cant_ofertas_rechazadas=cant_ofertas_rechazadas+1
 						echo "$archivo;Contrato no encontrado;$linea_archivo;$usuario;$fecha_actual" >> $PROCDIR/rechazadas/$concesionario.rech
 					else
 						# El Contrato Encontrado
@@ -95,12 +114,14 @@ do
 						if [ $monto_debajo -eq 1 ]
 						then
 							#echo -e "\e[1;34m Rechazado. No alcanza el monto mínimo.  \e[0m"
+							let cant_ofertas_rechazadas=cant_ofertas_rechazadas+1
 							echo "$archivo;No alcanza monto mínimo;$linea_archivo;$usuario;$fecha_actual" >> $PROCDIR/rechazadas/$concesionario.rech
 						else
 							monto_encima=$(echo "$importe_ofrecido > $valor_maximo_licitacion" | bc)
 							if [ $monto_encima -eq 1 ]
 							then
 								#echo -e "\e[1;34m Rechazado. Supera el monto máximo.  \e[0m"
+								let cant_ofertas_rechazadas=cant_ofertas_rechazadas+1
 								echo "$archivo;Supera el monto máximo;$linea_archivo;$usuario;$fecha_actual" >> $PROCDIR/rechazadas/$concesionario.rech
 							else
 								# Supero validaciones de monto
@@ -114,14 +135,17 @@ do
 								if [ -z ${flag_participa} ]
 								then
 									#echo -e "\e[1;34m Rechazado. Suscriptor no puede participar.  \e[0m"
+									let cant_ofertas_rechazadas=cant_ofertas_rechazadas+1
 									echo "$archivo;Suscriptor no puede participar;$linea_archivo;$usuario;$fecha_actual" >> $PROCDIR/rechazadas/$concesionario.rech
 								else
 									if [ $flag_participa -eq 1 ] || [ $flag_participa -eq 2 ]
 									then
 										# Supero validación de flag de participacion
+										let cant_ofertas_validas=cant_ofertas_validas+1
 										echo "$concesionario;$fecha_archivo;$contrato_fusionado;$grupo;$orden;$importe_ofrecido;$nombre_suscriptor;$usuario;$fecha_actual" >> $PROCDIR/validas/$fecha_adj.txt
 									else
 										#echo -e "\e[1;34m Rechazado. Suscriptor no puede participar.  \e[0m"
+										let cant_ofertas_rechazadas=cant_ofertas_rechazadas+1
 										echo "$archivo;Suscriptor no puede participar;$linea_archivo;$usuario;$fecha_actual" >> $PROCDIR/rechazadas/$concesionario.rech
 									fi
 								fi
@@ -131,7 +155,10 @@ do
 				fi
 			done < $OKDIR/$archivo
 		fi
-	# Un archivo que pudo ser procesado correctamente debe moverse a procesados
-	$BINDIR/MoverArchivos $OKDIR/$archivo $PROCDIR/procesadas ProcesarOfertas
+		$BINDIR/GrabarBitacora "ProcesarOfertas" "Registros leídos = $cant_reg_leidos. Cantidad de ofertas válidas = $cant_ofertas_validas. Cantidad de ofertas rechazadas = $cant_ofertas_rechazadas." "INFO"
+		# Un archivo que pudo ser procesado correctamente debe moverse a procesados
+		$BINDIR/MoverArchivos $OKDIR/$archivo $PROCDIR/procesadas ProcesarOfertas
 	fi
 done
+
+$BINDIR/GrabarBitacora "ProcesarOfertas" "Fin de ProcesarOfertas" "INFO"
