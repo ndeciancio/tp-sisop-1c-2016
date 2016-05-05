@@ -1,5 +1,12 @@
 #!/bin/bash
 
+# Me aseguro que no se corran más de 1 vez el proceso en simultáneo
+cantidad=$(pgrep -c "ProcesarOfertas")
+if [ $cantidad -gt 1 ]
+then
+	exit
+fi
+
 IFS='
 '
 # Del padron, solo me interesa quedarme con el grupo y el número de orden y concatenarlos para formar el contrato_fusionado
@@ -13,7 +20,7 @@ nuevos_o_abiertos=$(grep -v "^[0-9]\{1,4\};CERRADO;[^;]*;[^;]*;[^;]*;[^;]*" $MAE
 #nuevos=$(grep "^[0-9]\{1,4\};NUEVO;[^;]*;[^;]*;[^;]*;[^;]*" MAEDIR/Grupos.csv)
 
 # Localizo la proxima fecha de adjudicacion
-# Se presupone que las fechas vienen ordenadas cronológicamente
+# Se presupone como hipótesis que las fechas vienen ordenadas cronológicamente
 while read -r fechas
 do
 	fechas=$(echo $fechas | cut -f1 -d';')
@@ -26,8 +33,8 @@ do
 done < $MAEDIR/FechasAdj.csv
 
 # -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-# Pendiente: Debe loggearse la cantidad de archivos a procesar y no puede ocurrir que un archivo se procese 2 veces (puede ocurrir porque se ejecutan varios ProcesarOfertas
-# simultáneamente. Los archivos deben procesarse en orden cronológico, corregir el for
+# Pendiente: Debe loggearse la cantidad de archivos a procesar (pero el problema está en que yo loggueo un cantidad y después si me van agregando archivos, proceso más pero
+# ya no puedo modificar la cantidad que grabó el log. Los archivos deben procesarse en orden cronológico, corregir el for.
 # -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 #lista_archivos=$(ls $OKDIR | sort)
 #cantidad_archivos=$(echo $lista_archivo | wc -l)
@@ -95,7 +102,7 @@ do
 						let cant_ofertas_rechazadas=cant_ofertas_rechazadas+1
 						echo "$archivo;Contrato no encontrado;$linea_archivo;$usuario;$fecha_actual" >> $PROCDIR/rechazadas/$concesionario.rech
 					else
-						# El Contrato Encontrado
+						# El Contrato fue Encontrado
 
 						cuota_pura=$(echo $linea_val | sed "s/^[^;]*;[^;]*;[^;]*;\([^;]*\);[^;]*;[^;]*$/\1/")
 						cuotas_pendientes=$(echo $linea_val | sed "s/^[^;]*;[^;]*;[^;]*;[^;]*;\([^;]*\);[^;]*$/\1/")
@@ -156,7 +163,7 @@ do
 			done < $OKDIR/$archivo
 			$BINDIR/GrabarBitacora "ProcesarOfertas" "Registros leídos = $cant_reg_leidos. Cantidad de ofertas válidas = $cant_ofertas_validas. Cantidad de ofertas rechazadas = $cant_ofertas_rechazadas." "INFO"
 			# Un archivo que pudo ser procesado correctamente debe moverse a procesados
-			$BINDIR/MoverArchivos $OKDIR/$archivo $PROCDIR/procesadas ProcesarOfertas
+			$BINDIR/MoverArchivos $OKDIR/$archivo ${PROCDIR}/procesadas ProcesarOfertas
 		fi
 	fi
 done
