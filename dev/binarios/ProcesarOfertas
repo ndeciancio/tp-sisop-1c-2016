@@ -24,7 +24,9 @@ IFS='
 contratos_fusionados=$(cut -c1-4,6-8 ${MAEDIR}/${ARCH_PADRON})
 
 # De ${ARCH_GRUPOS}, me interesan los que están en estado ABIERTO o NUEVO (es decir, todos los que son NO CERRADOS, -v invierte comportamiento)
-nuevos_o_abiertos=$(grep -v "^[0-9]\{1,4\};CERRADO;[^;]*;[^;]*;[^;]*;[^;]*" ${MAEDIR}/${ARCH_GRUPOS})
+#nuevos_o_abiertos=$(grep -v "^[0-9]\{1,4\};CERRADO;[^;]*;[^;]*;[^;]*;[^;]*" ${MAEDIR}/${ARCH_GRUPOS})
+# -i ignora mayusculas y minusculas
+nuevos_o_abiertos=$(grep "^[0-9]\{1,4\};[A-Z]*;[^;]*;[^;]*;[^;]*;[^;]*" ${MAEDIR}/${ARCH_GRUPOS})
 
 # Ver si no conviene validar ABIERTO y CERRADO por separado para diferenciarlos en el LOG.
 #abiertos=$(grep "^[0-9]\{1,4\};ABIERTO;[^;]*;[^;]*;[^;]*;[^;]*" ${MAEDIR}/${ARCH_GRUPOS})
@@ -106,7 +108,8 @@ do
 					grupo=$(echo $linea_archivo | cut -c1-4)
 					orden=$(echo $linea_archivo | cut -c5-7)
 					# de la linea leida que tiene el contrato fusionado y el monto, me quedo con el monto y luego reemplazo COMA decimal por PUNTO decimal
-					importe_ofrecido=$(echo $linea_archivo | sed "s/^[^;]*;\([^;]*\)$/\1/" | sed 's/\,/\./')
+					#importe_ofrecido=$(echo $linea_archivo | sed "s/^[^;]*;\([^;]*\)$/\1/" | sed 's/\,/\./')
+					importe_ofrecido=$(echo $linea_archivo | cut -f2 -d';' | sed 's/\,/\./')
 
 					linea_val=$(echo $nuevos_o_abiertos | grep "^$grupo;[^;]*;[^;]*;[^;]*;[^;]*;[^;]*$")
 					hay_resultados=$?
@@ -118,9 +121,12 @@ do
 						# El Contrato fue Encontrado
 
 						#Reemplazo la COMA decimal por el PUNTO decimal en el valor de la cuota
-						valor_pura=$(echo $linea_val | sed "s/^[^;]*;[^;]*;[^;]*;\([^;]*\);[^;]*;[^;]*$/\1/" | sed 's/\,/\./')
-						cant_cuotas_pendientes=$(echo $linea_val | sed "s/^[^;]*;[^;]*;[^;]*;[^;]*;\([^;]*\);[^;]*$/\1/")
-						cant_cuotas_para_licitar=$(echo $linea_val | sed "s/^[^;]*;[^;]*;[^;]*;[^;]*;[^;]*;\([^;]*\)$/\1/")
+						#valor_cuota=$(echo $linea_val | sed "s/^[^;]*;[^;]*;[^;]*;\([^;]*\);[^;]*;[^;]*$/\1/" | sed 's/\,/\./')
+						valor_cuota=$(echo $linea_val | cut -f4 -d';' | sed 's/\,/\./')
+						#cant_cuotas_pendientes=$(echo $linea_val | sed "s/^[^;]*;[^;]*;[^;]*;[^;]*;\([^;]*\);[^;]*$/\1/")
+						cant_cuotas_pendientes=$(echo $linea_val | cut -f5 -d';')
+						#cant_cuotas_para_licitar=$(echo $linea_val | sed "s/^[^;]*;[^;]*;[^;]*;[^;]*;[^;]*;\([^;]*\)$/\1/")
+						cant_cuotas_para_licitar=$(echo $linea_val | cut -f6 -d';')
 
 						valor_minimo_licitacion=$(echo $valor_cuota \* $cant_cuotas_para_licitar | bc)
 						valor_maximo_licitacion=$(echo $valor_cuota \* $cant_cuotas_pendientes | bc)
@@ -140,7 +146,7 @@ do
 								echo "$archivo;Supera el monto máximo;$linea_archivo;$usuario;$fecha_y_hora_actual" >> ${PROCDIR}/rechazadas/$concesionario.rech
 							else
 								# Superó validaciones de monto
-
+								# grep -a : Procesa los archivos como si fueran de texto (sino lo ve como archivo binario y no funciona)
 								linea_padron=$(grep -a "^$grupo;$orden;[^;]*;[^;]*;[^;]*;[^;]*;[^;]*;[^;]*;[^;]*;[^;]*;[^;]*;[^;]*;[^;]*$" ${MAEDIR}/${ARCH_PADRON})
 								flag_participa=$(echo $linea_padron | cut -f6 -d';')
 								nombre_suscriptor=$(echo $linea_padron | cut -f3 -d';')
@@ -154,8 +160,16 @@ do
 									if [ $flag_participa -eq 1 ] || [ $flag_participa -eq 2 ]
 									then
 										# Supero validación de flag de participacion
-										let cant_ofertas_validas=cant_ofertas_validas+1
-										echo "$concesionario;$fecha_archivo;$contrato_fusionado;$grupo;$orden;$importe_ofrecido;$nombre_suscriptor;$usuario;$fecha_y_hora_actual" >> ${PROCDIR}/validas/$fecha_adjudicacion.txt
+										#estado=$(echo $linea_val | sed "s/^[^;]*;\([^;]*\);[^;]*;[^;]*;[^;]*;[^;]*$/\1/")
+										estado=$(echo $linea_val | cut -f2 -d';')
+										if [ "$estado" == "NUEVO" ] || [ "$estado" == "ABIERTO" ]
+										then
+											let cant_ofertas_validas=cant_ofertas_validas+1
+											echo "$concesionario;$fecha_archivo;$contrato_fusionado;$grupo;$orden;$importe_ofrecido;$nombre_suscriptor;$usuario;$fecha_y_hora_actual" >> ${PROCDIR}/validas/$fecha_adjudicacion.txt
+										else
+											let cant_ofertas_rechazadas=cant_ofertas_rechazadas+1
+											echo "$archivo;Grupo CERRADO;$linea_archivo;$usuario;$fecha_y_hora_actual" >> ${PROCDIR}/rechazadas/$concesionario.rech
+										fi
 									else
 										let cant_ofertas_rechazadas=cant_ofertas_rechazadas+1
 										echo "$archivo;Suscriptor no puede participar;$linea_archivo;$usuario;$fecha_y_hora_actual" >> ${PROCDIR}/rechazadas/$concesionario.rech
