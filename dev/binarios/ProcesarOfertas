@@ -7,8 +7,11 @@ ARCH_GRUPOS="grupos.csv"
 #RUTA_ARCH_ACEPTADOS=
 #RUTA_REGS_RECHAZADOS=
 #RUTA_REGS_VALIDOS=
+#EXT_RECHAZADOS="rech"
+#EXT_VALIDOS="txt"
+usuario=$(whoami)
 
-# Me aseguro que no se corran más de 1 vez el proceso en simultáneo
+# Me aseguro que no se corra más de 1 vez el proceso en simultáneo
 cant_procesos=$(pgrep -c "ProcesarOfertas")
 if [ $cant_procesos -gt 1 ]
 then
@@ -24,18 +27,17 @@ contratos_fusionados=$(cut -c1-4,6-8 ${MAEDIR}/${ARCH_PADRON})
 nuevos_o_abiertos=$(grep -v "^[0-9]\{1,4\};CERRADO;[^;]*;[^;]*;[^;]*;[^;]*" ${MAEDIR}/${ARCH_GRUPOS})
 
 # Ver si no conviene validar ABIERTO y CERRADO por separado para diferenciarlos en el LOG.
-#abiertos=$(grep "^[0-9]\{1,4\};ABIERTO;[^;]*;[^;]*;[^;]*;[^;]*" MAEDIR/${ARCH_GRUPOS})
-#nuevos=$(grep "^[0-9]\{1,4\};NUEVO;[^;]*;[^;]*;[^;]*;[^;]*" MAEDIR/${ARCH_GRUPOS})
+#abiertos=$(grep "^[0-9]\{1,4\};ABIERTO;[^;]*;[^;]*;[^;]*;[^;]*" ${MAEDIR}/${ARCH_GRUPOS})
+#nuevos=$(grep "^[0-9]\{1,4\};NUEVO;[^;]*;[^;]*;[^;]*;[^;]*" ${MAEDIR}/${ARCH_GRUPOS})
 
 # Localizo la proxima fecha de adjudicacion
 # Se presupone como hipótesis que las fechas vienen ordenadas cronológicamente
-while read -r fechas
+while read -r fecha_leida
 do
-	fechas=$(echo $fechas | cut -f1 -d';')
-	fechas=$(echo $fechas | sed 's-\([0-3][0-9]\)/\([0-1][0-9]\)/\([0-9]\{4\}\)-\3\2\1-')
-	if [ `date +%Y%m%d` -lt $fechas ]
+	fecha_leida=$(echo $fecha_leida | cut -f1 -d';' | sed 's-\([0-3][0-9]\)/\([0-1][0-9]\)/\([0-9]\{4\}\)-\3\2\1-')
+	if [ `date +%Y%m%d` -lt $fecha_leida ]
 	then
-		fecha_adj=$fechas
+		fecha_adjudicacion=$fecha_leida
 		break
 	fi
 done < ${MAEDIR}/${ARCH_FECHAS_ADJUDICACION}
@@ -52,17 +54,20 @@ ${BINDIR}/GrabarBitacora "ProcesarOfertas" "Cantidad de archivos a procesar: $ca
 
 IFS='
 '
+cant_archivos_procesados=0
+cant_archivos_rechazados=0
 
 for archivo in $lista_archivos
 do
 	cant_reg_leidos=0
 	cant_ofertas_validas=0
 	cant_ofertas_rechazadas=0
+	
 	# Verifico que el archivo no este duplicado contra PROCDIR/procesados
 	exito=$(find "${PROCDIR}/procesadas/" -type f -name "$archivo" | wc -l)
 	if [ $exito -ne 0 ]
 	then
-		#echo -e "\e[1;31m     Se rechaza el archivo por estar duplicado \e[0m"
+		let cant_archivos_rechazados=cant_archivos_rechazados+1
 		${BINDIR}/GrabarBitacora "ProcesarOfertas" "Se rechaza el archivo $archivo por estar duplicado." "ERR"
 		${BINDIR}/MoverArchivos ${OKDIR}/${archivo} ${NOKDIR} ProcesarOfertas
 	else
@@ -73,21 +78,22 @@ do
 		exito=$?
 		if [ $exito -ne 0 ]
 		then
-			#echo -e "\e[1;31m     Se rechaza el archivo porque su estructura no se corresponde con el formato esperado \e[0m"
+			let cant_archivos_rechazados=cant_archivos_rechazados+1
 			${BINDIR}/GrabarBitacora "ProcesarOfertas" "Se rechaza el archivo $archivo porque su estructura no se corresponde con el formato esperado." "ERR"
 			${BINDIR}/MoverArchivos ${OKDIR}/${archivo} ${NOKDIR} ProcesarOfertas
 		else
-			#echo -e "\e[1;34m     Archivo a procesar: $archivo \e[0m"
 			${BINDIR}/GrabarBitacora "ProcesarOfertas" "Archivo a procesar: $archivo." "INFO"
-			usuario=$(whoami)
+			let cant_archivos_procesados=cant_archivos_procesados+1
+			
 			concesionario=$(echo $archivo | sed "s/^\([^;]*\)_[^;]*$/\1/")
-			fecha_archivo=$(echo $archivo | sed "s/^[^;]*_\([^;]*\)\.[^;]*\.[^;]*$/\1/")
-			fecha_actual=$(date +"%Y%m%d_%T")
+			fecha_archivo=$(echo $archivo | sed "s/^[^;]*_\([^;]*\)\.csv$/\1/")
 
 			# Verificar Ofertas Validas
 			while read -r linea_archivo
 			do
 				let cant_reg_leidos=cant_reg_leidos+1
+				# La fecha y hora debe ser de grabación del registro, por eso está dentro del while
+				fecha_y_hora_actual=$(date +"%Y%m%d_%T")
 				# Borro el retorno de carro que esta al final de cada linea
 				linea_archivo=$(echo $linea_archivo | sed 's/\r//')
 				contrato_fusionado=$(echo $linea_archivo | cut -c1-7)
@@ -96,53 +102,44 @@ do
 				resultado=$?
 				if [ $resultado -eq 0 ]
 				then
-					# contrato_fusionado valido. Hay que validar que esté en abierto o nuevo
+					# contrato_fusionado valido. Hay que validar que esté en estado ABIERTO o NUEVO
 					grupo=$(echo $linea_archivo | cut -c1-4)
 					orden=$(echo $linea_archivo | cut -c5-7)
-					importe_ofrecido=$(echo $linea_archivo | sed "s/^[^;]*;\([^;]*\)$/\1/")
-
-					# Reemplazo coma decimal por PUNTO decimal
-					importe_ofrecido=$(echo $importe_ofrecido | sed 's/\,/\./')
+					# de la linea leida que tiene el contrato fusionado y el monto, me quedo con el monto y luego reemplazo COMA decimal por PUNTO decimal
+					importe_ofrecido=$(echo $linea_archivo | sed "s/^[^;]*;\([^;]*\)$/\1/" | sed 's/\,/\./')
 
 					linea_val=$(echo $nuevos_o_abiertos | grep "^$grupo;[^;]*;[^;]*;[^;]*;[^;]*;[^;]*$")
 					hay_resultados=$?
 					if [ $hay_resultados -ne 0 ]
 					then
-						#echo -e "\e[1;34m Rechazado. Contrato no encontrado. \e[0m"
 						let cant_ofertas_rechazadas=cant_ofertas_rechazadas+1
-						echo "$archivo;Contrato no encontrado;$linea_archivo;$usuario;$fecha_actual" >> ${PROCDIR}/rechazadas/$concesionario.rech
+						echo "$archivo;Contrato no encontrado;$linea_archivo;$usuario;$fecha_y_hora_actual" >> ${PROCDIR}/rechazadas/$concesionario.rech
 					else
 						# El Contrato fue Encontrado
 
-						cuota_pura=$(echo $linea_val | sed "s/^[^;]*;[^;]*;[^;]*;\([^;]*\);[^;]*;[^;]*$/\1/")
-						cuotas_pendientes=$(echo $linea_val | sed "s/^[^;]*;[^;]*;[^;]*;[^;]*;\([^;]*\);[^;]*$/\1/")
-						cuotas_para_licitar=$(echo $linea_val | sed "s/^[^;]*;[^;]*;[^;]*;[^;]*;[^;]*;\([^;]*\)$/\1/")
+						#Reemplazo la COMA decimal por el PUNTO decimal en el valor de la cuota
+						valor_pura=$(echo $linea_val | sed "s/^[^;]*;[^;]*;[^;]*;\([^;]*\);[^;]*;[^;]*$/\1/" | sed 's/\,/\./')
+						cant_cuotas_pendientes=$(echo $linea_val | sed "s/^[^;]*;[^;]*;[^;]*;[^;]*;\([^;]*\);[^;]*$/\1/")
+						cant_cuotas_para_licitar=$(echo $linea_val | sed "s/^[^;]*;[^;]*;[^;]*;[^;]*;[^;]*;\([^;]*\)$/\1/")
 
-						#Reemplazo la coma por el punto en el monto
-						valor_cuota=$(echo $cuota_pura | sed 's/\,/\./')
-
-						valor_minimo_licitacion=$(echo $valor_cuota \* $cuotas_para_licitar | bc)
-						valor_maximo_licitacion=$(echo $valor_cuota \* $cuotas_pendientes | bc)
-
+						valor_minimo_licitacion=$(echo $valor_cuota \* $cant_cuotas_para_licitar | bc)
+						valor_maximo_licitacion=$(echo $valor_cuota \* $cant_cuotas_pendientes | bc)
 
 						# Se valida el monto ofrecido
 
 						monto_debajo=$(echo "$importe_ofrecido < $valor_minimo_licitacion" | bc)
 						if [ $monto_debajo -eq 1 ]
 						then
-							#echo -e "\e[1;34m Rechazado. No alcanza el monto mínimo.  \e[0m"
 							let cant_ofertas_rechazadas=cant_ofertas_rechazadas+1
-							echo "$archivo;No alcanza monto mínimo;$linea_archivo;$usuario;$fecha_actual" >> ${PROCDIR}/rechazadas/$concesionario.rech
+							echo "$archivo;No alcanza monto mínimo;$linea_archivo;$usuario;$fecha_y_hora_actual" >> ${PROCDIR}/rechazadas/$concesionario.rech
 						else
 							monto_encima=$(echo "$importe_ofrecido > $valor_maximo_licitacion" | bc)
 							if [ $monto_encima -eq 1 ]
 							then
-								#echo -e "\e[1;34m Rechazado. Supera el monto máximo.  \e[0m"
 								let cant_ofertas_rechazadas=cant_ofertas_rechazadas+1
-								echo "$archivo;Supera el monto máximo;$linea_archivo;$usuario;$fecha_actual" >> ${PROCDIR}/rechazadas/$concesionario.rech
+								echo "$archivo;Supera el monto máximo;$linea_archivo;$usuario;$fecha_y_hora_actual" >> ${PROCDIR}/rechazadas/$concesionario.rech
 							else
-								# Supero validaciones de monto
-								# Se valida que el FLAG participa
+								# Superó validaciones de monto
 
 								linea_padron=$(grep -a "^$grupo;$orden;[^;]*;[^;]*;[^;]*;[^;]*;[^;]*;[^;]*;[^;]*;[^;]*;[^;]*;[^;]*;[^;]*$" ${MAEDIR}/${ARCH_PADRON})
 								flag_participa=$(echo $linea_padron | cut -f6 -d';')
@@ -151,19 +148,17 @@ do
 								# Se rechazan los registros que tengan un caracter no imprimible en el flag
 								if [ -z ${flag_participa} ]
 								then
-									#echo -e "\e[1;34m Rechazado. Suscriptor no puede participar.  \e[0m"
 									let cant_ofertas_rechazadas=cant_ofertas_rechazadas+1
-									echo "$archivo;Suscriptor no puede participar;$linea_archivo;$usuario;$fecha_actual" >> ${PROCDIR}/rechazadas/$concesionario.rech
+									echo "$archivo;Suscriptor no puede participar;$linea_archivo;$usuario;$fecha_y_hora_actual" >> ${PROCDIR}/rechazadas/$concesionario.rech
 								else
 									if [ $flag_participa -eq 1 ] || [ $flag_participa -eq 2 ]
 									then
 										# Supero validación de flag de participacion
 										let cant_ofertas_validas=cant_ofertas_validas+1
-										echo "$concesionario;$fecha_archivo;$contrato_fusionado;$grupo;$orden;$importe_ofrecido;$nombre_suscriptor;$usuario;$fecha_actual" >> ${PROCDIR}/validas/$fecha_adj.txt
+										echo "$concesionario;$fecha_archivo;$contrato_fusionado;$grupo;$orden;$importe_ofrecido;$nombre_suscriptor;$usuario;$fecha_y_hora_actual" >> ${PROCDIR}/validas/$fecha_adjudicacion.txt
 									else
-										#echo -e "\e[1;34m Rechazado. Suscriptor no puede participar.  \e[0m"
 										let cant_ofertas_rechazadas=cant_ofertas_rechazadas+1
-										echo "$archivo;Suscriptor no puede participar;$linea_archivo;$usuario;$fecha_actual" >> ${PROCDIR}/rechazadas/$concesionario.rech
+										echo "$archivo;Suscriptor no puede participar;$linea_archivo;$usuario;$fecha_y_hora_actual" >> ${PROCDIR}/rechazadas/$concesionario.rech
 									fi
 								fi
 							fi
@@ -171,11 +166,12 @@ do
 					fi
 				fi
 			done < ${OKDIR}/$archivo
-			${BINDIR}/GrabarBitacora "ProcesarOfertas" "Registros leídos = $cant_reg_leidos. Cantidad de ofertas válidas = $cant_ofertas_validas. Cantidad de ofertas rechazadas = $cant_ofertas_rechazadas." "INFO"
+			${BINDIR}/GrabarBitacora "ProcesarOfertas" "Registros leídos = ${cant_reg_leidos}. Cantidad de ofertas válidas = ${cant_ofertas_validas}. Cantidad de ofertas rechazadas = ${cant_ofertas_rechazadas}." "INFO"
 			# Un archivo que pudo ser procesado correctamente debe moverse a procesados
 			${BINDIR}/MoverArchivos ${OKDIR}/${archivo} ${PROCDIR}/procesadas ProcesarOfertas
 		fi
 	fi
 done
 
-$BINDIR/GrabarBitacora "ProcesarOfertas" "Fin de ProcesarOfertas" "INFO"
+${BINDIR}/GrabarBitacora "ProcesarOfertas" "Cantidad de archivos procesados = ${cant_archivos_procesados}. Cantidad de archivos rechazados = ${cant_archivos_rechazados}." "INFO"
+${BINDIR}/GrabarBitacora "ProcesarOfertas" "Fin de ProcesarOfertas" "INFO"
