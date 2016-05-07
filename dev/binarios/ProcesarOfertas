@@ -23,14 +23,13 @@ IFS='
 # Del padron, solo me interesa quedarme con el grupo y el número de orden y concatenarlos para formar el contrato_fusionado
 contratos_fusionados=$(cut -c1-4,6-8 ${MAEDIR}/${ARCH_PADRON})
 
-# De ${ARCH_GRUPOS}, me interesan los que están en estado ABIERTO o NUEVO (es decir, todos los que son NO CERRADOS, -v invierte comportamiento)
-#nuevos_o_abiertos=$(grep -v "^[0-9]\{1,4\};CERRADO;[^;]*;[^;]*;[^;]*;[^;]*" ${MAEDIR}/${ARCH_GRUPOS})
-# -i ignora mayusculas y minusculas
-nuevos_o_abiertos=$(grep "^[0-9]\{1,4\};[A-Z]*;[^;]*;[^;]*;[^;]*;[^;]*" ${MAEDIR}/${ARCH_GRUPOS})
+# GRUPOS
+# nº grupo | estado grupo | cantidad cuotas | cuota pura | cuotas pendientes | cuotas para licitacion
+#    4     |       n      |       num       |  importe   |      num          |            num
 
-# Ver si no conviene validar ABIERTO y CERRADO por separado para diferenciarlos en el LOG.
-#abiertos=$(grep "^[0-9]\{1,4\};ABIERTO;[^;]*;[^;]*;[^;]*;[^;]*" ${MAEDIR}/${ARCH_GRUPOS})
-#nuevos=$(grep "^[0-9]\{1,4\};NUEVO;[^;]*;[^;]*;[^;]*;[^;]*" ${MAEDIR}/${ARCH_GRUPOS})
+# -i ignora mayusculas y minusculas
+#grupos=$(grep "^[0-9]\{4\};[A-Z]*;[^;]*;[^;]*;[^;]*;[^;]*" ${MAEDIR}/${ARCH_GRUPOS})
+grupos=$(grep "^[0-9]\{4\};[A-Z]\{5,7\};[0-9]\{1,\};[0-9]\{1,\},*[0-9]*;[0-9]\{1,\};[0-9]\{1,\}$" ${MAEDIR}/${ARCH_GRUPOS})
 
 # Localizo la proxima fecha de adjudicacion
 # Se presupone como hipótesis que las fechas vienen ordenadas cronológicamente
@@ -75,7 +74,9 @@ do
 	else
 		# Verifico la cantidad de campos del primer registro
 		read linea_archivo < ${OKDIR}/$archivo
-		echo $linea_archivo | grep -q "^[0-9]\{7\};[0-9].*$"
+		#echo $linea_archivo | grep -q "^[0-9]\{7\};[0-9].*$"
+		echo $linea_archivo | grep -q "^[0-9]\{7\};[0-9]\{1,\},*[0-9]\{1,\}.$" # el punto es porque todas las líneas tienen un retorno de carro al final
+		
 		# Verifico si la linea tiene el formato esperado. Si el formato es aceptado, grep retorna 0; Si el formato está mal, grep retorna 1.
 		exito=$?
 		if [ $exito -ne 0 ]
@@ -108,10 +109,9 @@ do
 					grupo=$(echo $linea_archivo | cut -c1-4)
 					orden=$(echo $linea_archivo | cut -c5-7)
 					# de la linea leida que tiene el contrato fusionado y el monto, me quedo con el monto y luego reemplazo COMA decimal por PUNTO decimal
-					#importe_ofrecido=$(echo $linea_archivo | sed "s/^[^;]*;\([^;]*\)$/\1/" | sed 's/\,/\./')
 					importe_ofrecido=$(echo $linea_archivo | cut -f2 -d';' | sed 's/\,/\./')
 
-					linea_val=$(echo $nuevos_o_abiertos | grep "^$grupo;[^;]*;[^;]*;[^;]*;[^;]*;[^;]*$")
+					linea_val=$(echo $grupos | grep "^$grupo;[^;]*;[^;]*;[^;]*;[^;]*;[^;]*$")
 					hay_resultados=$?
 					if [ $hay_resultados -ne 0 ]
 					then
@@ -121,11 +121,8 @@ do
 						# El Contrato fue Encontrado
 
 						#Reemplazo la COMA decimal por el PUNTO decimal en el valor de la cuota
-						#valor_cuota=$(echo $linea_val | sed "s/^[^;]*;[^;]*;[^;]*;\([^;]*\);[^;]*;[^;]*$/\1/" | sed 's/\,/\./')
 						valor_cuota=$(echo $linea_val | cut -f4 -d';' | sed 's/\,/\./')
-						#cant_cuotas_pendientes=$(echo $linea_val | sed "s/^[^;]*;[^;]*;[^;]*;[^;]*;\([^;]*\);[^;]*$/\1/")
 						cant_cuotas_pendientes=$(echo $linea_val | cut -f5 -d';')
-						#cant_cuotas_para_licitar=$(echo $linea_val | sed "s/^[^;]*;[^;]*;[^;]*;[^;]*;[^;]*;\([^;]*\)$/\1/")
 						cant_cuotas_para_licitar=$(echo $linea_val | cut -f6 -d';')
 
 						valor_minimo_licitacion=$(echo $valor_cuota \* $cant_cuotas_para_licitar | bc)
@@ -146,8 +143,14 @@ do
 								echo "$archivo;Supera el monto máximo;$linea_archivo;$usuario;$fecha_y_hora_actual" >> ${PROCDIR}/rechazadas/$concesionario.rech
 							else
 								# Superó validaciones de monto
+								
+# PADRON
+# grupo | orden	| nombre suscriptor | concesionario | coeficiente | participa | motivo | cuotas de recupero | cuotas de deuda | fecha 1º venc | 1º cuota con deuda |   deuda    | id susc 
+#   4   |   3   |        N          |        4      |   num       |     1     |   2    |     000000         |        00       |     00000000  |         00         | 0000000000 |    num
+
 								# grep -a : Procesa los archivos como si fueran de texto (sino lo ve como archivo binario y no funciona)
-								linea_padron=$(grep -a "^$grupo;$orden;[^;]*;[^;]*;[^;]*;[^;]*;[^;]*;[^;]*;[^;]*;[^;]*;[^;]*;[^;]*;[^;]*$" ${MAEDIR}/${ARCH_PADRON})
+								#linea_padron=$(grep -a "^$grupo;$orden;[^;]*;[^;]*;[^;]*;[^;]*;[^;]*;[^;]*;[^;]*;[^;]*;[^;]*;[^;]*;[^;]*$" ${MAEDIR}/${ARCH_PADRON})
+								linea_padron=$(grep -a "^$grupo;$orden;[^;]*;[0-9]\{4\};[0-9]\{1,\};[^;]*;[^;]*;[^;]*;[0-9]\{2\};[0-9]\{8\};[0-9]\{2\};[0-9]\{10\};[^;]*$" ${MAEDIR}/${ARCH_PADRON})
 								flag_participa=$(echo $linea_padron | cut -f6 -d';')
 								nombre_suscriptor=$(echo $linea_padron | cut -f3 -d';')
 
@@ -160,7 +163,6 @@ do
 									if [ $flag_participa -eq 1 ] || [ $flag_participa -eq 2 ]
 									then
 										# Supero validación de flag de participacion
-										#estado=$(echo $linea_val | sed "s/^[^;]*;\([^;]*\);[^;]*;[^;]*;[^;]*;[^;]*$/\1/")
 										estado=$(echo $linea_val | cut -f2 -d';')
 										if [ "$estado" == "NUEVO" ] || [ "$estado" == "ABIERTO" ]
 										then
