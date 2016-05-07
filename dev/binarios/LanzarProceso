@@ -42,20 +42,19 @@ if [ ! -f $BINDIR/$COMANDO ] || [ ! -x $BINDIR/$COMANDO ]; then
   exit 1
 fi
 
-if [ -f $TEMPDIR/$PROC ] && cat $TEMPDIR/$PROC | grep $COMANDO >/dev/null 2>&1; then
-  PID=`cat $TEMPDIR/$PROC | grep $COMANDO | cut -d\| -f1`
-  echoerr "El comando ya se encuentra en ejecución con PID $PID" 
+if ps | grep $COMANDO >/dev/null 2>&1; then
+  echoerr "El comando ya se encuentra en ejecución."
   exit 1
 fi
 
 echo "Ejecutando $COMANDO"
 if [ -v SERVICIO ] && [ $SERVICIO -eq 1 ]; then
   $BINDIR/$COMANDO $@ &>/dev/null &
-  PID=$!
-  echo "$PID|$COMANDO" > $TEMPDIR/$PROC
 else
   $BINDIR/$COMANDO $@
 fi
+
+PID=$!
 
 if [ -v BITACORA ] && [ $BITACORA -eq 1 ]; then
   $BINDIR/GrabarBitacora $COMANDO "Ejecutando $COMANDO; PID: $PID" INFO
