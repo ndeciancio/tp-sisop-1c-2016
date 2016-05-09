@@ -38,7 +38,7 @@ if (@ARGV > 0){
 		
 		if($llamada_valida){
 			esta_corriendo();
-			cargar_directorios();
+			# cargar_directorios();
 			cargar_hashes();
 			if ($help){
 				usage();
@@ -51,12 +51,29 @@ if (@ARGV > 0){
 
 			if($sorteo){
 				cargar_sorteo();
+				my @idFecha = split("\_", $sorteoFile);
+				cargar_fecha_adj((split("\\.",@idFecha[1]))[0]);
+				print "Ganadores del Sorteo @idFecha[0] de fecha @idFecha[1]\n\n";
 				ganadores_sorteo();
 			}
 
 			if($licitacion){
 				cargar_sorteo();
+				my @idFecha = split("\_", $sorteoFile);
+				cargar_fecha_adj((split("\\.",@idFecha[1]))[0]);
+				print "Ganadores por Licitación @idFecha[0] de fecha @idFecha[1]\n\n";
+				ganadores_sorteo();
 				ganadores_licitacion();
+			}
+
+			if($resultado){
+				cargar_sorteo();
+				my @idFecha = split("\_", $sorteoFile);
+				cargar_fecha_adj((split("\\.",@idFecha[1]))[0]);
+				print "Ganadores por Grupo en el acto de adjudicación de fecha @idFecha[1], Sorteo: @idFecha[0]\n\n";
+				ganadores_sorteo();
+				ganadores_licitacion();
+				resultado_ganadores();
 			}
 
 			if($grabar){
@@ -70,7 +87,7 @@ if (@ARGV > 0){
 				if($ganSor){
 					$salida = (split("\\.",$sorteoFile))[0];
 				}
-				if($sorteo or $licitacion){
+				if($sorteo or $licitacion or $resultado){
 					my $nombreSalida = nombre_archivo_salida();
 					my $fechaSalida = (split("\\.",(split("\_", $sorteoFile))[1]))[0];
 					my $sorteoSalida = (split("\_", $sorteoFile))[0];
@@ -100,7 +117,7 @@ if (@ARGV > 0){
 #Esta funcion verifica si esta corriendo el proceso, si ya esta corriendo lo deja correr, sino no lo corre otra vez
 sub esta_corriendo {
 	my @processid = `pgrep DeterminarGanadores`;
-	if (@processid > 1){
+	if (@processid){
 		print "el proceso ya esta corriendo\n";
 		exit 0;
 	}else{
@@ -135,7 +152,7 @@ sub cargar_sorteo{
 	opendir(DIR,$dirname) or die "No se encuentra o no se puede abrir el directorio $dirname\n";
 	while(my $file = readdir(DIR)){
 		next if ($file =~ /^\.+$/);
-		if( ($file =~ /^($ganSor)\_\d+.csv\.*/) or ($file =~ /^($sorteo)\_\d+.csv\.*/) or ($file =~ /^($licitacion)\_\d+.csv\.*/) ){
+		if( ($file =~ /^($ganSor)\_\d+.csv\.*/) or ($file =~ /^($sorteo)\_\d+.csv\.*/) or ($file =~ /^($licitacion)\_\d+.csv\.*/) or ($file =~ /^($resultado)\_\d+.csv\.*/) ){
 			$sorteoFile = $file;
 			open(my $archivo, "$dirname/$file");
 			while(my $linea=<$archivo>){
@@ -176,10 +193,11 @@ sub restart{
 	undef(%sorteoResponse);
 	undef(%licitacionResponse);
 	undef($licitacion);
+	undef($resultado);
 }
 
 sub cargar_directorios{
-	open(my $confCIPAL, "$ENV{'CONFDIR'}/CIPAL.cnf");
+	open(my $confCIPAL, "../conf/CIPAL.cnfg");
 	while( my $linea = <$confCIPAL>){
 		my @fields=split("=",$linea);
 		if(@fields[0] eq "PROCDIR"){
@@ -235,7 +253,7 @@ sub cargar_fecha_adj{
 }
 
 sub mostrar_ganadores_sorteo{
-	if(!$resultado){
+	if(!$resultado ){
 		foreach my $index( sort keys %sorteoResponse){
 			print "Ganador por sorteo del grupo $index Nro de Orden: $sorteoResponse{$index}[0], $sorteoResponse{$index}[1] (Nro de Sorteo $sorteoResponse{$index}[2])\n";
 			if($grabar){
@@ -246,9 +264,6 @@ sub mostrar_ganadores_sorteo{
 }
 
 sub ganadores_sorteo{
-	my @idFecha = split("\_", $sorteoFile);
-	cargar_fecha_adj((split("\\.",@idFecha[1]))[0]);
-	print "Ganadores del Sorteo @idFecha[0] de fecha @idFecha[1]\n\n";
 	my @rango = split("-",$grupoRef);
 	my @varios = sort(split(",",$grupoRef));
 	if( $grupoRef eq "all" ){
@@ -309,22 +324,29 @@ sub mostrar_ganadores_licitacion{
 }
 
 sub ganadores_licitacion{
-	my @idFecha = split("\_", $sorteoFile);
-	cargar_fecha_adj((split("\\.",@idFecha[1]))[0]);
-	print "Ganadores por Licitación @idFecha[0] de fecha @idFecha[1]\n\n";
 	my @rango = split("-",$grupoRef);
 	my @varios = sort(split(",",$grupoRef));
 	if( $grupoRef eq "all" ){
 		foreach my $nroOrden( sort {$hash{$a} <=> $hash{$b} } keys %hash ){
 			foreach my $registro(@adjud){
-				if ( (@$registro[4] == $nroOrden ) and ($grupos{@$registro[3]}[0] =~ /^(ABIERTO|NUEVO)/) and ($temaLPadron{@$registro[6]}[5] != "") ){
-					if( !$licitacionResponse{@$registro[3]} || $licitacionResponse{@$registro[3]}[3] < @$registro[5] ){
-						$licitacionResponse{@$registro[3]} = [$nroOrden,@$registro[6],$hash{$nroOrden},@$registro[5]];
+				my $estado = $grupos{@$registro[3]}[0];
+				my $participa = $temaLPadron{@$registro[6]}[5];
+				my $oferta = @$registro[5];
+				my $nombre = @$registro[6];
+				my $nroGrupo = @$registro[3];
+				if ( (@$registro[4] == $nroOrden ) and ($estado =~ /^(ABIERTO|NUEVO)/) and ($participa != "") ){
+					if( !$licitacionResponse{$nroGrupo} and ( !$sorteoResponse{$nroGrupo} or $sorteoResponse{$nroGrupo}[1] ne $nombre ) ){
+						$licitacionResponse{$nroGrupo} = [$nroOrden,$nombre,$hash{$nroOrden},$oferta];
 					}else{
-						if(($licitacionResponse{@$registro[3]}[3] == @$registro[5]) and ($licitacionResponse{@$registro[3]}[2] > $hash{$nroOrden})){
-							$licitacionResponse{@$registro[3]} = [$nroOrden,@$registro[6],$hash{$nroOrden},@$registro[5]];
+						if( $licitacionResponse{$nroGrupo} and ( $licitacionResponse{$nroGrupo}[3] < $oferta) and ($sorteoResponse{$nroGrupo}[1] ne $nombre) ){
+								$licitacionResponse{$nroGrupo} = [$nroOrden,$nombre,$hash{$nroOrden},$oferta];
+						}else{
+							if( $licitacionResponse{$nroGrupo} and ($licitacionResponse{$nroGrupo}[3] == $oferta) and ($licitacionResponse{$nroGrupo}[2] > $hash{$nroOrden}) and ($sorteoResponse{$nroGrupo}[1] ne $nombre)){
+								$licitacionResponse{$nroGrupo} = [$nroOrden,$nombre,$hash{$nroOrden},$oferta];
+							}
 						}
 					}
+
 				}
 			}
 		}
@@ -365,6 +387,71 @@ sub ganadores_licitacion{
 					}
 				}
 				mostrar_ganadores_licitacion();
+			}
+		}
+	}
+
+}
+
+sub resultado_ganadores{
+	my @rango = split("-",$grupoRef);
+	my @varios = sort(split(",",$grupoRef));
+	if( $grupoRef eq "all" ){
+		foreach my $nroGrupo( keys %grupos){
+			if($sorteoResponse{$nroGrupo}){
+				print "$nroGrupo\-$sorteoResponse{$nroGrupo}[0] S ($sorteoResponse{$nroGrupo}[1])\n";
+				if ($grabar){
+				 	push(@response,"$nroGrupo\-$sorteoResponse{$nroGrupo}[0] S ($sorteoResponse{$nroGrupo}[1])\n");
+				}
+			}
+			if($licitacionResponse{$nroGrupo}){
+				print "$nroGrupo\-$licitacionResponse{$nroGrupo}[0] L ($licitacionResponse{$nroGrupo}[1])\n";
+				if ($grabar){
+					push(@response,"$nroGrupo\-$sorteoResponse{$nroGrupo}[0] S ($sorteoResponse{$nroGrupo}[1])\n");
+				}
+			}
+		}
+	}else{
+		my $rango = @rango;
+		if( $rango == 2 ){
+			foreach my $nroGrupo( keys %grupos){
+				if ( @rango[0] <= $nroGrupo and @rango[1] >= $nroGrupo ){
+					if($sorteoResponse{$nroGrupo}){
+						print "$nroGrupo\-$sorteoResponse{$nroGrupo}[0] S ($sorteoResponse{$nroGrupo}[1])\n";
+						if ($grabar){
+							push(@response,"$nroGrupo\-$sorteoResponse{$nroGrupo}[0] S ($sorteoResponse{$nroGrupo}[1])\n");
+						}
+					}
+					if($licitacionResponse{$nroGrupo}){
+						print "$nroGrupo\-$licitacionResponse{$nroGrupo}[0] L ($licitacionResponse{$nroGrupo}[1])\n";
+						if ($grabar){
+							push(@response,"$nroGrupo\-$sorteoResponse{$nroGrupo}[0] S ($sorteoResponse{$nroGrupo}[1])\n");
+						}
+					}
+				}	
+				
+			}
+		}else{
+			my $varios = @varios;
+			if( $varios >= 1 and $grupoRef ne "all" ){
+				foreach my $grupo(@varios){
+					foreach my $nroGrupo( keys %grupos){
+						if ( $grupo == $nroGrupo ){
+							if($sorteoResponse{$nroGrupo}){
+								print "$nroGrupo\-$sorteoResponse{$nroGrupo}[0] S ($sorteoResponse{$nroGrupo}[1])\n";
+								if ($grabar){
+									push(@response,"$nroGrupo\-$sorteoResponse{$nroGrupo}[0] S ($sorteoResponse{$nroGrupo}[1])\n");
+								}
+							}
+							if($licitacionResponse{$nroGrupo}){
+								print "$nroGrupo\-$licitacionResponse{$nroGrupo}[0] L ($licitacionResponse{$nroGrupo}[1])\n";
+								if ($grabar){
+									push(@response,"$nroGrupo\-$sorteoResponse{$nroGrupo}[0] S ($sorteoResponse{$nroGrupo}[1])\n");
+								}
+							}
+						}	
+					}
+				}
 			}
 		}
 	}
