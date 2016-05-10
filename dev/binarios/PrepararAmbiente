@@ -105,9 +105,13 @@ echo "Se procederá a verificar la integridad de la instalación."
 
 function buscar_archivo_en_config {
   if [ ! -f "$CONFDIR/$1" ]; then
-    echoerr "No se encuentra el archivo $1 en el directorio de configuración."
-    echoerr "Reinstale la aplicación o contacte a un administrador para solucionar el problema."
-    return 1
+    if [ -f "$GRUPO/$1.bak" ]; then
+      cp "$GRUPO/$1.bak" "$CONFDIR/$1" >/dev/null 2>&1
+    else 
+      echoerr "El archivo $1 no pudo ser encontrado."
+      echoerr "Por favor reinstale la aplicación para solucionar el problema."
+      return 1
+    fi
   else
     echo "GRUPO/config/$1... OK"
   fi

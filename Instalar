@@ -90,6 +90,10 @@ for archivo in `ls -1 binarios 2>/dev/null`; do
   fi
 done
 
+for lst in `ls -1 config | grep .lst`; do
+  cp config/$lst ./$lst.bak
+done
+
 for archivo in `ls -l maestros 2>/dev/null`; do
   if [ -f "maestros/$archivo" ]; then
     echo "maestros/$archivo" >> config/inventario.lst
