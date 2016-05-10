@@ -1,14 +1,22 @@
-===============================================================
-# README: CIPAL
+=============================================================
+# CIPAL README: MANUAL DE USUARIO
+-------------------------------------------------------------
+    1. Inicio del SO
+    2. Instalación del Sistema CIPAL
+    3. Inicio del Sistema CIPAL 
+    4. Ejecución de Comandos
+    5. Indicaciones Adicionales
 
 ---------------------------------------------------------------
 ## Iniciando el Sistema Operativo desde el puerto USB
 
----------------------------------------------------------------
-## Iniciando Sesión
+Para iniciar el Sistema Operativo desde el puerto USB se debe
+insertar el dispositivo pendrive, reiniciar el ordenador y
+bootear desde el pendrive.
+Seleccionar la opción 'Try Ubuntu'.  Una vez iniciado el 
+sistema, se deberá descargar el trabajo práctico de este link:
 
----------------------------------------------------------------
-## Descargando el Paquete
+https://drive.google.com/folderview?id=0BxlSXU6_y1F4NUF3UDdtejlpRWs&usp=sharing
 
 ---------------------------------------------------------------
 ## Instalación del Sistema
