@@ -71,19 +71,19 @@ $ $BINDIR/DetenerProceso <nombre proceso>
 ---------------------------------------------------------------
 ## Comandos Disponibles
 
-BINDIR/PepararAmbiente
+#####BINDIR/PepararAmbiente
 Establece las variables de entorno necesarias para la ejecución
 del sistema. Debe ser ejecutado previo a cualquier otro
 comando en el directorio de instalación del sistema.
 
-BINDIR/LanzarProceso
+#####BINDIR/LanzarProceso
 Documentado en la sección "Ejecución de Comandos".
 
-BINDIR/DetenerProceso <comando>
+#####BINDIR/DetenerProceso <comando>
 Detiene el proceso ejecutado con LanzarProceso -c <comando>,
 de estar este en ejecución.
 
-BINDIR/RecibirOfertas
+#####BINDIR/RecibirOfertas
 Comienza un proceso deamon encargado de determinar si los 
 archivos que se encuentran en el directorio ARRDIR respetan
 el formato necesario (<codigoConcesionario>_<AñoMesDia>.csv),
@@ -94,13 +94,33 @@ son movidos al directorio OKDIR, los que no respeten son movidos
 al directorio NOKDIR y escribe en el log el motivo por el cual
 no es un archivo aceptado.
 
-BINDIR/ProcesarOfertas
+#####BINDIR/ProcesarOfertas
+Es disparado por RecibirOfertas, busca la proxima fecha de adjudicacion
+y guarda en un archivo todas las ofertas validas que participan en el
+acto de adjudicacion. Toma los datos de OKDIR, a medida que se van validando
+las ofertas los archivos pasan a PROCDIR/procesadas, el comando no acepta
+archivos ya procesados que se encuentren en este directorio. Los archivos ya
+procesados o que no contengan la estructura adecuada se mueven a NOKDIR.
+Los registros rechazados van a ir a PROCDIR/validas/ en el archivo
+<fecha_de_adjudicación>.txt y los validos a PROCDIR/validas/ en el archivo
+<cod_concesionario>.rech.
 
-BINDIR/GenerarSorteo
-Se lanza con LanzarProceso, busca la proxima fecha de adjudicacion
+#####BINDIR/GenerarSorteo
+Se ejecuta con LanzarProceso, busca la proxima fecha de adjudicacion
 y genera un archivo en PROCDIR/sorteos/ con el nombre
 <sorteo_id>_<fecha_de_adjudicación>, donde se encuentra un numero
 de sorteo para cada uno de los 168 participantes.
 
 
-BINDIR/DeterminarGanadores
+#####BINDIR/DeterminarGanadores
+Se ejecuta manualmente, la opcion -a muestra la ayuda del comando, y la
+opcion-g graba el resultado de la consulta realizada en un archivo.
+Con -r se hacen las diferentes consultas:
+
+A. Consulta los resultados del sorteo pasado por parametros.
+
+B. Consulta el ganador del sorteo de uno o mas grupos pasados por parametros.
+
+C. Consulta el ganador por licitacion de uno o mas grupos pasados por parametros.
+
+D. Consulta los ganadores de uno o mas grupos pasados por parametros.
