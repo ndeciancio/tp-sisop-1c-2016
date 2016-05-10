@@ -46,7 +46,8 @@ done < ${MAEDIR}/${ARCH_FECHAS_ADJUDICACION}
 # -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 # Pendiente: Los archivos deben procesarse en orden cronológico (es por fecha, no por número de concesionario), corregir el for.
 # -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-lista_archivos=$(ls ${OKDIR})
+#lista_archivos=$(ls ${OKDIR})
+lista_archivos=$(ls -1 ${OKDIR} | sort -n -t '_' -k 2)
 IFS=' '
 cant_archivos=$(echo $lista_archivos | wc -l)
 
