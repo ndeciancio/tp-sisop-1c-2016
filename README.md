@@ -94,6 +94,13 @@ son movidos al directorio OKDIR, los que no respeten son movidos
 al directorio NOKDIR y escribe en el log el motivo por el cual
 no es un archivo aceptado.
 
+BINDIR/ProcesarOfertas
+
 BINDIR/GenerarSorteo
+Se lanza con LanzarProceso, busca la proxima fecha de adjudicacion
+y genera un archivo en PROCDIR/sorteos/ con el nombre
+<sorteo_id>_<fecha_de_adjudicación>, donde se encuentra un numero
+de sorteo para cada uno de los 168 participantes.
+
 
 BINDIR/DeterminarGanadores
