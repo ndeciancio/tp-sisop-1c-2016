@@ -253,7 +253,7 @@ sub cargar_fecha_adj{
 }
 
 sub mostrar_ganadores_sorteo{
-	if(!$resultado ){
+	if(!$resultado and !$licitacion ){
 		foreach my $index( sort keys %sorteoResponse){
 			print "Ganador por sorteo del grupo $index Nro de Orden: $sorteoResponse{$index}[0], $sorteoResponse{$index}[1] (Nro de Sorteo $sorteoResponse{$index}[2])\n";
 			if($grabar){
@@ -267,7 +267,6 @@ sub ganadores_sorteo{
 	my @rango = split("-",$grupoRef);
 	my @varios = sort(split(",",$grupoRef));
 	if( $grupoRef eq "all" ){
-		print "$grupoRef\n";
 		foreach my $nroOrden( sort {$hash{$a} <=> $hash{$b} } keys %hash ){
 			foreach my $registro(@adjud){
 				if ( (@$registro[4] == $nroOrden ) and ($grupos{@$registro[3]}[0] =~ /^(ABIERTO|NUEVO)/) and ($temaLPadron{@$registro[6]}[5] != "") ){
@@ -356,12 +355,21 @@ sub ganadores_licitacion{
 		if( $rango == 2 ){
 			foreach my $nroOrden( sort {$hash{$a} <=> $hash{$b} } keys %hash ){
 				foreach my $registro(@adjud){
+					my $estado = $grupos{@$registro[3]}[0];
+					my $participa = $temaLPadron{@$registro[6]}[5];
+					my $oferta = @$registro[5];
+					my $nombre = @$registro[6];
+					my $nroGrupo = @$registro[3];
 					if ( @rango[0] <= @$registro[3] and @rango[1] >= @$registro[3] and (@$registro[4] == $nroOrden ) and ($grupos{@$registro[3]}[0] =~ /^(ABIERTO|NUEVO)/) and ($temaLPadron{@$registro[6]}[5] != "") ){
-						if( !$licitacionResponse{@$registro[3]} || $licitacionResponse{@$registro[3]}[3] < @$registro[5] ){
-							$licitacionResponse{@$registro[3]} = [$nroOrden,@$registro[6],$hash{$nroOrden},@$registro[5]];
+						if( !$licitacionResponse{$nroGrupo} and ( !$sorteoResponse{$nroGrupo} or $sorteoResponse{$nroGrupo}[1] ne $nombre ) ){
+							$licitacionResponse{$nroGrupo} = [$nroOrden,$nombre,$hash{$nroOrden},$oferta];
 						}else{
-							if(($licitacionResponse{@$registro[3]}[3] == @$registro[5]) and ($licitacionResponse{@$registro[3]}[2] > $hash{$nroOrden})){
-								$licitacionResponse{@$registro[3]} = [$nroOrden,@$registro[6],$hash{$nroOrden},@$registro[5]];
+							if( $licitacionResponse{$nroGrupo} and ( $licitacionResponse{$nroGrupo}[3] < $oferta) and ($sorteoResponse{$nroGrupo}[1] ne $nombre) ){
+									$licitacionResponse{$nroGrupo} = [$nroOrden,$nombre,$hash{$nroOrden},$oferta];
+							}else{
+								if( $licitacionResponse{$nroGrupo} and ($licitacionResponse{$nroGrupo}[3] == $oferta) and ($licitacionResponse{$nroGrupo}[2] > $hash{$nroOrden}) and ($sorteoResponse{$nroGrupo}[1] ne $nombre)){
+									$licitacionResponse{$nroGrupo} = [$nroOrden,$nombre,$hash{$nroOrden},$oferta];
+								}
 							}
 						}
 					}
@@ -374,12 +382,17 @@ sub ganadores_licitacion{
 				foreach my $grupo(@varios){
 					foreach my $nroOrden( sort {$hash{$a} <=> $hash{$b} } keys %hash ){
 						foreach my $registro(@adjud){
+							my $estado = $grupos{@$registro[3]}[0];
+							my $participa = $temaLPadron{@$registro[6]}[5];
+							my $oferta = @$registro[5];
+							my $nombre = @$registro[6];
+							my $nroGrupo = @$registro[3];
 							if ( $grupo == @$registro[3] and (@$registro[4] == $nroOrden ) and ($grupos{@$registro[3]}[0] =~ /^(ABIERTO|NUEVO)/) and ($temaLPadron{@$registro[6]}[5] != "") ){
-								if( !$licitacionResponse{@$registro[3]} || $licitacionResponse{@$registro[3]}[3] < @$registro[5] ){
-									$licitacionResponse{@$registro[3]} = [$nroOrden,@$registro[6],$hash{$nroOrden},@$registro[5]];
+								if( !$licitacionResponse{$nroGrupo} and ( !$sorteoResponse{$nroGrupo} or $sorteoResponse{$nroGrupo}[1] ne $nombre ) ){
+									$licitacionResponse{$nroGrupo} = [$nroOrden,$nombre,$hash{$nroOrden},$oferta];
 								}else{
-									if(($licitacionResponse{@$registro[3]}[3] == @$registro[5]) and ($licitacionResponse{@$registro[3]}[2] > $hash{$nroOrden})){
-										$licitacionResponse{@$registro[3]} = [$nroOrden,@$registro[6],$hash{$nroOrden},@$registro[5]];
+									if( $licitacionResponse{$nroGrupo} and ( $licitacionResponse{$nroGrupo}[3] < $oferta) and ($sorteoResponse{$nroGrupo}[1] ne $nombre) ){
+											$licitacionResponse{$nroGrupo} = [$nroOrden,$nombre,$hash{$nroOrden},$oferta];
 									}
 								}
 							}
@@ -462,23 +475,39 @@ sub usage{
 	print << "NL";
 
         syntax:
-                --a -ayuda
-                       imprime este texto de ayuda
-                -g
-                       escribe el resultado de la consulta en un archivo luego de realizada una consulta, en caso de no indicar este comando el resultado de la consulta se mostrara por pantalla
-                       perl DeterminarGanadores -r <consulta> -g
-                -r
-                       comando de consultas, puede realizar una consulta especificando codigo de oficina o aniomes, debe especificar al menos un filtro para la consulta
-                       perl AFLIST -r <consulta> [-filtro] <parametro> 
-                -s
-                       comando para consultar estadisticas
-                --exit
-                			 salir de la ejecucion
+                --a -ayuda	imprime este texto de ayuda
+
+                -g 			escribe el resultado de la consulta en un archivo luego de realizada una consulta, en caso de no indicar este comando el resultado de la consulta se mostrara por pantalla
+                       		perl DeterminarGanadores -r <id_sorteo> -g
+
+                -r 			Resultado Genral del Sorteo, puede realizar una consulta especificando id de sorteo, debe especificar obligatoriemente un id de sorteo para la consulta
+                       		perl DeterminarGanadores -r <id_sorteo>
+
+                -s 			Ganadores por Sorteo, puedo consultar los ganadores por sorteo para un grupo, todos los grupos, un rango de grupos o varios grupos, debe especificar obligatoriemente un id de sorteo para la consulta
+                			perl DeterminarGanadores -s <id_sorteo> --grupo all
+                			perl DeterminarGanadores -s <id_sorteo> --grupo <nro_grupo>-<nro_grupo>
+                			perl DeterminarGanadores -s <id_sorteo> --grupo <nro_grupo>,<nro_grupo>,...
+                			perl DeterminarGanadores -s <id_sorteo> --grupo <nro_grupo>
+
+                -l 			Ganadores por Licitación, puedo consultar los ganadores por licitación para un grupo, todos los grupos, un rango de grupos o varios grupos, debe especificar obligatoriemente un id de sorteo para la consulta
+                			perl DeterminarGanadores -l <id_sorteo> --grupo all
+                			perl DeterminarGanadores -l <id_sorteo> --grupo <nro_grupo>-<nro_grupo>
+                			perl DeterminarGanadores -l <id_sorteo> --grupo <nro_grupo>,<nro_grupo>,...
+                			perl DeterminarGanadores -l <id_sorteo> --grupo <nro_grupo>
+
+                -p 			Resultados por Grupo, se muestra los resultados de los ganadores para un grupo, todos los grupos, un rango de grupos o varios grupos, debe especificar obligatoriemente un id de sorteo para la consulta
+                			perl DeterminarGanadores -p <id_sorteo> --grupo all
+                			perl DeterminarGanadores -p <id_sorteo> --grupo <nro_grupo>-<nro_grupo>
+                			perl DeterminarGanadores -p <id_sorteo> --grupo <nro_grupo>,<nro_grupo>,...
+                			perl DeterminarGanadores -p <id_sorteo> --grupo <nro_grupo>
+
+                --exit 		salir de la ejecucion
 
 
-       example: $0 -r RUV -c SIS -w
-                $0 -r RUV	-a ALBANESIVALERIA,DOMINGUEZRAMON
-                $0 -r RUV -t DDN --numB 11-34101307,11-43280820
+       example: $0 -r 3402 -g
+                $0 -s 3402 --grupo 8884-8900
+                $0 -l 3402 --grupo 8884,8900
+                $0 -p 3402 --grupo all
 
 NL
 }
