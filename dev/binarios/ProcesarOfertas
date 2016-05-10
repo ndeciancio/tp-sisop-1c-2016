@@ -17,6 +17,7 @@ if [ $cant_procesos -gt 1 ]
 then
 	exit
 fi
+SAVE_IFS=${IFS}
 
 IFS='
 '
@@ -167,8 +168,22 @@ do
 										estado=$(echo $linea_val | cut -f2 -d';')
 										if [ "$estado" == "NUEVO" ] || [ "$estado" == "ABIERTO" ]
 										then
-											let cant_ofertas_validas=cant_ofertas_validas+1
-											echo "$concesionario;$fecha_archivo;$contrato_fusionado;$grupo;$orden;$importe_ofrecido;$nombre_suscriptor;$usuario;$fecha_y_hora_actual" >> ${PROCDIR}/validas/$fecha_adjudicacion.txt
+											#let cant_ofertas_validas=cant_ofertas_validas+1
+											#echo "$concesionario;$fecha_archivo;$contrato_fusionado;$grupo;$orden;$importe_ofrecido;$nombre_suscriptor;$usuario;$fecha_y_hora_actual" >> ${PROCDIR}/validas/$fecha_adjudicacion.txt
+											# Si no existe el archivo, lo creo. Sino el grep no tiene donde buscar
+											if [ ! -f ${PROCDIR}/validas/$fecha_adjudicacion.txt ]
+											then
+												> ${PROCDIR}/validas/$fecha_adjudicacion.txt
+											fi
+											hay_ofertas_anteriores=$(grep -c "^$concesionario;[^;]*;$contrato_fusionado;$grupo;$orden;[^;]*;[^;]*;[^;]*;[^;]*$" ${PROCDIR}/validas/$fecha_adjudicacion.txt)
+											if [ $hay_ofertas_anteriores -eq 0 ]
+											then
+												let cant_ofertas_validas=cant_ofertas_validas+1
+												echo "$concesionario;$fecha_archivo;$contrato_fusionado;$grupo;$orden;$importe_ofrecido;$nombre_suscriptor;$usuario;$fecha_y_hora_actual" >> ${PROCDIR}/validas/$fecha_adjudicacion.txt
+											else
+												let cant_ofertas_rechazadas=cant_ofertas_rechazadas+1
+												echo "$archivo;Suscriptor ya había ofertado;$linea_archivo;$usuario;$fecha_y_hora_actual" >> ${PROCDIR}/rechazadas/$concesionario.rech
+											fi
 										else
 											let cant_ofertas_rechazadas=cant_ofertas_rechazadas+1
 											echo "$archivo;Grupo CERRADO;$linea_archivo;$usuario;$fecha_y_hora_actual" >> ${PROCDIR}/rechazadas/$concesionario.rech
@@ -192,3 +207,4 @@ done
 
 ${BINDIR}/GrabarBitacora "ProcesarOfertas" "Cantidad de archivos procesados = ${cant_archivos_procesados}. Cantidad de archivos rechazados = ${cant_archivos_rechazados}." "INFO"
 ${BINDIR}/GrabarBitacora "ProcesarOfertas" "Fin de ProcesarOfertas" "INFO"
+IFS=${SAVE_IFS}
