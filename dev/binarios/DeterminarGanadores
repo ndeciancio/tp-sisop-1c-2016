@@ -30,7 +30,7 @@ my $confINFODIR="/home/nicolasdeciancio/tp-sisop/INFODIR";
 #configuracion para que incluya opciones de una sola letra, e ignore el case.
 Getopt::Long::Configure('bundling','no_ignore_case');
 
-# verificar_variables_de_ambiente();
+verificar_variables_de_ambiente();
 
 if (@ARGV > 0){
 	while(1){
@@ -38,7 +38,7 @@ if (@ARGV > 0){
 		
 		if($llamada_valida){
 			esta_corriendo();
-			# cargar_directorios();
+			cargar_directorios();
 			cargar_hashes();
 			if ($help){
 				usage();
@@ -197,7 +197,7 @@ sub restart{
 }
 
 sub cargar_directorios{
-	open(my $confCIPAL, "../conf/CIPAL.cnfg");
+	open(my $confCIPAL, "$ENV{CONFDIR}/CIPAL.cnf");
 	while( my $linea = <$confCIPAL>){
 		my @fields=split("=",$linea);
 		if(@fields[0] eq "PROCDIR"){
@@ -214,7 +214,7 @@ sub cargar_directorios{
 }
 
 sub verificar_variables_de_ambiente{
-	if(!$ENV{'GRUPO'} or !$ENV{'BINDIR'} or !$ENV{'MAEDIR'} or !$ENV{'ARRIDIR'} or !$ENV{'OKDIR'} or !$ENV{'PROCDIR'} or !$ENV{'INFODIR'} or !$ENV{'LOGDIR'} or !$ENV{'NOKDIR'} or !$ENV{'LOGSIZE'} or !$ENV{'SLEEPTIME'}){
+	if(!$ENV{'AMBIENTE_INICIALIZADO'}){
 		print "debe realizar primero la inicializacion de ambiente\n";
 		exit 0;
 	}else{
@@ -410,7 +410,7 @@ sub resultado_ganadores{
 	my @rango = split("-",$grupoRef);
 	my @varios = sort(split(",",$grupoRef));
 	if( $grupoRef eq "all" ){
-		foreach my $nroGrupo( keys %grupos){
+		foreach my $nroGrupo( sort keys %grupos){
 			if($sorteoResponse{$nroGrupo}){
 				print "$nroGrupo\-$sorteoResponse{$nroGrupo}[0] S ($sorteoResponse{$nroGrupo}[1])\n";
 				if ($grabar){
@@ -427,7 +427,7 @@ sub resultado_ganadores{
 	}else{
 		my $rango = @rango;
 		if( $rango == 2 ){
-			foreach my $nroGrupo( keys %grupos){
+			foreach my $nroGrupo( sort keys %grupos){
 				if ( @rango[0] <= $nroGrupo and @rango[1] >= $nroGrupo ){
 					if($sorteoResponse{$nroGrupo}){
 						print "$nroGrupo\-$sorteoResponse{$nroGrupo}[0] S ($sorteoResponse{$nroGrupo}[1])\n";
@@ -448,7 +448,7 @@ sub resultado_ganadores{
 			my $varios = @varios;
 			if( $varios >= 1 and $grupoRef ne "all" ){
 				foreach my $grupo(@varios){
-					foreach my $nroGrupo( keys %grupos){
+					foreach my $nroGrupo( sort keys %grupos){
 						if ( $grupo == $nroGrupo ){
 							if($sorteoResponse{$nroGrupo}){
 								print "$nroGrupo\-$sorteoResponse{$nroGrupo}[0] S ($sorteoResponse{$nroGrupo}[1])\n";
