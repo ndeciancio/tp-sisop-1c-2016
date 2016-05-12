@@ -8,35 +8,61 @@
     5. Indicaciones Adicionales
 
 ---------------------------------------------------------------
-## Iniciando el Sistema Operativo desde el puerto USB
+## Inicio del SO
 
 Para iniciar el Sistema Operativo desde el puerto USB se debe
 insertar el dispositivo pendrive, reiniciar el ordenador y
 bootear desde el pendrive.
-Seleccionar la opción 'Try Ubuntu'.  Una vez iniciado el 
+Seleccionar la opción 'Try Ubuntu'.  Una vez iniciado el
 sistema, se deberá descargar el trabajo práctico de este link:
 
-https://drive.google.com/folderview?id=0BxlSXU6_y1F4NUF3UDdtejlpRWs&usp=sharing
+drive.google.com/folderview?id=0BxlSXU6_y1F4NUF3UDdtejlpRWs&usp=sharing
 
----------------------------------------------------------------
-## Instalación del Sistema
+-------------------------------------------------------------
+## Instalación del Sistema CIPAL
 
-Para instalar el sistema son necesarios dos archivos: el
-ejecutable Instalar y el paquete comprimido instalacion.tar.gz.
+Para instalar el sistema se requieren los archivos Instalar
+e instalacion.tar.gz. Para instalar el sistema, mover dichos
+archivos a un nuevo directorio d donde se desea instalar el
+sistema y ejecutar Instalar en d. Por ejemplo:
 
-El proceso de instalación es el siguiente:
+   $ mkdir ~/Grupo10
+   $ cp Instalar instalacion.tar.gz ~/Grupo10
+   $ cd ~/Grupo10
+   $ ./Instalar
 
-1. Mover Instalar e instalacion.tar.gz a un directorio d,
-   preferentemente vacío. Tras el proceso de instalación, 
-   todos los archivos necesarios para poner en marcha el
-   sistema habrán sido extraídos al directorio d.
-2. Ejecutar Instalar desde el directorio d.
+El proceso de instalación deja en el directorio de
+instalación los archivos necesarios para preparar el
+ambiente y ejecutar el sistema, en adición a los
+archivos de configuración necesarios.
 
-En d habrán sido extraídos los directorios del sistema,
-y habrá sido generado en d/config el archivo de configuración
-CIPAL.cnf. El archivo de configuración contiene las variables 
-de entorno que serán inicializadas por el proceso de 
-preparación del ambiente.
+Se recomienda no eliminar instalacion.tar.gz, ya que
+puede ser utilizado para reparar una instalación dañada.
+
+-------------------------------------------------------------
+## Inicio del Sistema CIPAL
+
+Antes de iniciar el sistema es necesario ejecutar
+PrepararAmbiente en el directorio de instalación. Suponiendo
+que el sistema se instaló en ~/Grupo10:
+
+   $ cd ~/Grupo10
+   $ . ./binarios/PrepararAmbiente
+
+Nótese que el comando se ejecuta en modo sourced.
+PrepararAmbiente inicializa las variables de ambiente
+que el sistema CIPAL requiere para su funcionamiento en
+el shell en el que es ejecutado. Para reiniciar el sistema,
+reinicie primero la sesión.
+
+PrepararAmbiente ofrece también la posibilidad de ejecutar
+el servicio de RecibirOfertas. De querer ejecutar el
+servicio, escribir si; en caso contrario escribir no;
+en cualquier caso, ingresar la respuesta y luego presionar
+return.
+
+Si se desea ejecutar algún comando manualmente, referirse
+a la sección 4.
 
 ---------------------------------------------------------------
 ## Preparación del Ambiente
@@ -60,75 +86,95 @@ se mostrará un mensaje de confirmación en la pantalla.
 ---------------------------------------------------------------
 ## Ejecución de Comandos
 
-Para ejecutar y detener procesos de CIPAL, se debe utilizar
-el comando LanzarProceso una vez ejecutado PrepararAmbiente.
+Para ejecutar un comando provisto por CIPAL, es recomendable
+hacerlo a través del ejecutable LanzarProceso, una vez
+ejecutado PrepararAmbiente (nótese que la inicialización
+del entorno es necesaria y LanzarProceso la exige).
 
-$ $BINDIR/LanzarProceso [opciones] -c <nombre comando> <args>
+   $ "$BINDIR"/LanzarProceso [-sb] -c <comando> <argumentos>
 
-Las opciones disponibles son:
+Las opciones disponibles son las siguientes:
 
--s: ejecuta el comando como un servicio (en segundo plano).
+  -s: ejecuta el comando como un servicio (en segundo plano)
+  -b: se reporta la inicialización en el log del comando.
+  -c: el comando a ejecutar; debe ser uno de los listados
+      a continuación.
 
--b: graba en la bitácora (en $LOGDIR) la ejecución del comando.
+Si se desea detener un servicio ejecutado mediante
+LanzarProceso, utilizar el complemento DetenerProceso:
 
-Para detener un proceso, es necesario utilizar el comando
-DetenerProceso ubicado en la carpeta de los binarios:
+   $ "$BINDIR"/DetenerProceso <comando>
 
-$ $BINDIR/DetenerProceso <nombre proceso>
+Los comandos que provee CIPAL son los siguientes:
 
----------------------------------------------------------------
-## Comandos Disponibles
+##### PepararAmbiente
+Establece las variables de entorno necesarias para la
+ejecución del sistema. Debe ser ejecutado previo a cualquier
+otro comando en el directorio de instalación del sistema.
 
-#####BINDIR/PepararAmbiente
-Establece las variables de entorno necesarias para la ejecución
-del sistema. Debe ser ejecutado previo a cualquier otro
-comando en el directorio de instalación del sistema.
-
-#####BINDIR/LanzarProceso
-Documentado en la sección "Ejecución de Comandos".
-
-#####BINDIR/DetenerProceso <comando>
-Detiene el proceso ejecutado con LanzarProceso -c <comando>,
-de estar este en ejecución.
-
-#####BINDIR/RecibirOfertas
-Comienza un proceso deamon encargado de determinar si los 
+##### RecibirOfertas
+Comienza un proceso deamon encargado de determinar si los
 archivos que se encuentran en el directorio ARRDIR respetan
-el formato necesario (<codigoConcesionario>_<AñoMesDia>.csv),
-el codigoConcesionario se encuentre en el archivo maestro de
-concesionarios y AñoMesDia sea una fecha correcta y anterior
-a la fecha actual. Aquellos archivos que respeten dicho formato
-son movidos al directorio OKDIR, los que no respeten son movidos
-al directorio NOKDIR y escribe en el log el motivo por el cual
-no es un archivo aceptado.
+el formato necesario (_.csv), el codigoConcesionario se
+encuentre en el archivo maestro de concesionarios y AñoMesDia
+sea una fecha correcta y anterior a la fecha actual. Aquellos
+archivos que respeten dicho formato son movidos al directorio
+OKDIR, los que no respeten son movidos al directorio NOKDIR y
+escribe en el log el motivo por el cual no es un archivo
+aceptado.
 
-#####BINDIR/ProcesarOfertas
-Es disparado por RecibirOfertas, busca la proxima fecha de adjudicacion
-y guarda en un archivo todas las ofertas validas que participan en el
-acto de adjudicacion. Toma los datos de OKDIR, a medida que se van validando
-las ofertas los archivos pasan a PROCDIR/procesadas, el comando no acepta
-archivos ya procesados que se encuentren en este directorio. Los archivos ya
-procesados o que no contengan la estructura adecuada se mueven a NOKDIR.
-Los registros rechazados van a ir a PROCDIR/validas/ en el archivo
-<fecha_de_adjudicación>.txt y los validos a PROCDIR/validas/ en el archivo
-<cod_concesionario>.rech.
+##### ProcesarOfertas
+Es disparado por RecibirOfertas, busca la proxima fecha de
+adjudicacion y guarda en un archivo todas las ofertas validas
+que participan en el acto de adjudicacion. Toma los datos de
+OKDIR, a medida que se van validando las ofertas los archivos
+pasan a PROCDIR/procesadas, el comando no acepta archivos ya
+procesados que se encuentren en este directorio. Los archivos
+ya procesados o que no contengan la estructura adecuada se
+mueven a NOKDIR. Los registros rechazados van a ir a
+PROCDIR/validas/ en el archivo .txt y los validos a
+PROCDIR/validas/ en el archivo .rech.
 
-#####BINDIR/GenerarSorteo
-Se ejecuta con LanzarProceso, busca la proxima fecha de adjudicacion
-y genera un archivo en PROCDIR/sorteos/ con el nombre
-<sorteo_id>_<fecha_de_adjudicación>, donde se encuentra un numero
-de sorteo para cada uno de los 168 participantes.
+##### GenerarSorteo
+Se ejecuta con LanzarProceso, busca la proxima fecha de
+adjudicacion y genera un archivo en PROCDIR/sorteos/ con el
+nombre _, donde se encuentra un numero de sorteo para cada
+uno de los 168 participantes.
+
+Ejecucion:
+
+$ "$BINDIR"/LanzarProceso -c GenerarSorteo
+
+##### DeterminarGanadores
+Se ejecuta manualmente, la opcion -a muestra la ayuda del
+comando, y la opcion-g graba el resultado de la consulta
+realizada en un archivo. Con -r se hacen las diferentes
+consultas:
+
+A. Consulta los resultados del sorteo pasado
+   por parametros.
+B. Consulta el ganador del sorteo de uno o mas grupos
+   pasados por parametros.
+C. Consulta el ganador por licitacion de uno o mas
+   grupos pasados por parametros.
+D. Consulta los ganadores de uno o mas grupos pasados por
+   parametros.
 
 
-#####BINDIR/DeterminarGanadores
-Se ejecuta manualmente, la opcion -a muestra la ayuda del comando, y la
-opcion-g graba el resultado de la consulta realizada en un archivo.
-Con -r se hacen las diferentes consultas:
+### COMANDOS ADICIONALES:
 
-A. Consulta los resultados del sorteo pasado por parametros.
+##### GrabarBitacora <comando> <mensaje> [INFO|WAR|ERR]
+Graba en <comando>.log, en el directorio de bitácoras,
+el mensaje <mensaje>, indicando si es de tipo informe
+(INFO), advertencia (WAR), o error (ERR). Por defecto,
+el tipo de mensaje es INFO.
 
-B. Consulta el ganador del sorteo de uno o mas grupos pasados por parametros.
+##### MostrarBitacora <comando> [filtro]
+Muestra el contenido del archivo <comando>.log en
+el directorio de las bitácoras. De ser provista
+una secuencia de caracteres como segundo argumento,
+se mostrarán solo las líneas que contengan dicha
+secuencia.
 
-C. Consulta el ganador por licitacion de uno o mas grupos pasados por parametros.
-
-D. Consulta los ganadores de uno o mas grupos pasados por parametros.
+-------------------------------------------------------------
+## Indicaciones Adicionales
