@@ -7,7 +7,7 @@ echo ""
 IFS='
 '
 
-# Cantidad de cambios que se va a ejecutar en el vactor
+# Cantidad de cambios que se va a ejecutar en el vector
 cambios=5000
 RANGO=168
 
@@ -32,38 +32,26 @@ do
   cambiar_indices $index_a $index_b
 done
 
+# Localizar proxima fecha de adjudicacion
+while read -r fecha
+do
+	fecha=$(echo $fecha | cut -f1 -d';')
+	fecha=$(echo $fecha | sed 's-\([0-3][0-9]\)/\([0-1][0-9]\)/\([0-9]\{4\}\)-\3\2\1-')
+    if [ `date +%Y%m%d` -lt $fecha ]; then
+		fecha_adj=$fecha
+		break
+	fi
+done < $MAEDIR/FechasAdj.csv
+
+# Archivo de entrada de datos y ruta de salida
 entrada="$MAEDIR/FechasAdj.csv"
 ruta_salida="$PROCDIR/sorteos"
-#entrada="/home/fran/Downloads/asdddd/MaestrosyTablas_TemaL/FechasAdj.csv"
-#ruta_salida="/home/fran/Downloads/asdddd"
 
 if [ ! -f $entrada ]; then
     entrada=$entrada+".xls"
 fi
 
-# Se esta trayendo la ultima fecha, nose si es lo esperado o se tiene que dejar como un parametro esto
-
-# Localizar proxima fecha de adjudicacion
-while read -r fechas
-do
-	fechas=$(echo $fechas | cut -f1 -d';')
-	fechas=$(echo $fechas | sed 's-\([0-3][0-9]\)/\([0-1][0-9]\)/\([0-9]\{4\}\)-\3\2\1-')
-    if [ `date +%Y%m%d` -lt $fechas ]; then
-		fecha_adj=$fechas
-		break
-	fi
-done < $MAEDIR/FechasAdj.csv
-
 ultima_fecha=$fecha_adj
-
-# Si ya existen sorteos en la fecha se aumenta el numero de id
-#salida=$ruta_salida"/1_"$ultima_fecha".csv"
-#count=1
-#while [ -f $salida ]
-#do
-#    let count++
-#    salida=$ruta_salida"/"$count"_"$ultima_fecha".csv"
-#done
 
 # Si ya existen sorteos con ese id se aumenta el numero de id
 count=1
@@ -73,13 +61,13 @@ do
 done
 salida="$ruta_salida/$count"_"$ultima_fecha.csv"
 
-# Esto hay que loguearlo ademas de meterlo en la salida, nose si el inicio y fin de sorteo van solo al log o tmb al archivo
-$BINDIR/GrabarBitacora GenerarSorteo "Inicio de Sorteo" INFO
+# Se guarda el sorteo en el archivo de salida y se logea.
+$BINDIR/GrabarBitacora GenerarSorteo "Inicio de Sorteo id: $count" INFO
 for i in $(seq 1 $RANGO)
 do
     echo "$i;${numeros[$i]}" >> $salida
     $BINDIR/GrabarBitacora -s GenerarSorteo "Numero de orden $i le corresponde el numero de sorteo ${numeros[$i]}" INFO
 done
-$BINDIR/GrabarBitacora GenerarSorteo "Fin de Sorteo" INFO
+$BINDIR/GrabarBitacora GenerarSorteo "Fin de Sorteo id: $count" INFO
 
 echo "Sorteo generado"
