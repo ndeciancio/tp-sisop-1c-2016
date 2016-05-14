@@ -36,73 +36,6 @@ function verificar_permisos {
   fi
 }
 
-function iniciar_recibir_ofertas {
-  echo "Iniciando el servicio de escucha de ofertas."
-  if [ -f "$BINDIR/RecibirOfertas" ] && [ -x "$BINDIR/RecibirOfertas" ]; then
-    $BINDIR/LanzarProceso -s -b -c RecibirOfertas
-  else
-    echoerr "RecibirOfertas no existe o no es ejecutable."
-    return 1
-  fi
-}
-
-function informar_sobre_lanzar_proceso {
-  echo "RecibirOfertas no se iniciará en este momento;"
-  echo "Para iniciar el servicio, use LanzarProceso."
-}
-
-function iniciar_escuchar_ofertas {
-    while true; do
-      read -p "¿Desea iniciar el servicio de escucha de ofertas? si/no " sino
-      case $sino in
-        [si]* ) echo ""; if ! iniciar_recibir_ofertas; then return 1; fi; break;;
-        [no]* ) echo ""; informar_sobre_lanzar_proceso; break;;
-        * ) echo "Por favor, responder si o no.";;
-      esac
-    done
-}
-
-if [ -v AMBIENTE_INICIALIZADO ]; then
-  echoerr "El ambiente ya ha sido inicializado."
-  echoerr "Para reiniciar, cierre la sesión y vuelva a iniciar."
-  iniciar_escuchar_ofertas
-  return $?
-fi
-
-RUTA_CIPAL_CONFIG="config/CIPAL.cnf"
-
-if [ ! -f "$RUTA_CIPAL_CONFIG" ]; then
-
-  if [ ! -f "../$RUTA_CIPAL_CONFIG" ]; then
-    echoerr "No se encuentra el archivo de configuración."
-    echoerr "Intente ejecutar PrepararAmbiente en el directorio de instalación."
-    return 1
-  else
-    RUTA_CIPAL_CONFIG="../$RUTA_CIPAL_CONFIG"
-  fi
-
-fi
-
-if ! verificar_permisos r "$RUTA_CIPAL_CONFIG"; then
-  return 1
-fi
-
-echo ""
-echo "Inicializando variables de entorno."
-v=0
-for registro in `cat $RUTA_CIPAL_CONFIG`; do
-  var=`echo "$registro" | cut -d= -f1`
-  val=`echo "$registro" | cut -d= -f2`
-  export $var=$val
-  variables[$v]=$var
-  echo -e "Set $var\t$val"
-  let v=$v+1
-done
-echo "Se inicializaron ${#variables[@]} variables de entorno."
-
-echo ""
-echo "Se procederá a verificar la integridad de la instalación."
-
 function buscar_archivo_en_config {
   if [ ! -f "$CONFDIR/$1" ]; then
     if [ -f "$GRUPO/$1.bak" ]; then
@@ -126,9 +59,9 @@ function extraer_faltantes {
     return 1
   fi
   for archivo in $@; do
-    if tar -tzf instalacion.tar.gz $archivo >/dev/null 2>&1; then
+    if tar -tzf instalacion.tar.gz ./$archivo >/dev/null 2>&1; then
       echo "$archivo... OK"
-      tar -xzf instalacion.tar.gz $archivo
+      tar -xzf instalacion.tar.gz ./$archivo
     else
       echoerr "$archivo... NO ENCONTRADO; No es posible reparar la instalación."
       echoerr "Contacte a un administrador para solucionar el problema."
@@ -137,6 +70,12 @@ function extraer_faltantes {
   done
   cd "$dir_actual"
 }
+
+echo ""
+echo "Se procederá a verificar la integridad de la instalación."
+
+GRUPO=`pwd`
+CONFDIR="./config"
 
 echo ""
 echo "Verificando existencia de directorios."
@@ -188,6 +127,45 @@ fi
 
 unset directorios_no_encontrados
 unset no_encontrados
+echo ""
+
+if [ -v AMBIENTE_INICIALIZADO ]; then
+  echoerr "El ambiente ya ha sido inicializado."
+  echoerr "Para reiniciar, cierre la sesión y vuelva a iniciar."
+  iniciar_escuchar_ofertas
+  return $?
+fi
+
+RUTA_CIPAL_CONFIG="config/CIPAL.cnf"
+
+if [ ! -f "$RUTA_CIPAL_CONFIG" ]; then
+
+  if [ ! -f "../$RUTA_CIPAL_CONFIG" ]; then
+    echoerr "No se encuentra el archivo de configuración."
+    echoerr "Intente ejecutar PrepararAmbiente en el directorio de instalación."
+    return 1
+  else
+    RUTA_CIPAL_CONFIG="../$RUTA_CIPAL_CONFIG"
+  fi
+
+fi
+
+if ! verificar_permisos r "$RUTA_CIPAL_CONFIG"; then
+  return 1
+fi
+
+echo ""
+echo "Inicializando variables de entorno."
+v=0
+for registro in `cat $RUTA_CIPAL_CONFIG`; do
+  var=`echo "$registro" | cut -d= -f1`
+  val=`echo "$registro" | cut -d= -f2`
+  export $var=$val
+  variables[$v]=$var
+  echo -e "Set $var\t$val"
+  let v=$v+1
+done
+echo "Se inicializaron ${#variables[@]} variables de entorno."
 
 echo ""
 echo "Verificando permisos sobre los ejecutables."
@@ -209,6 +187,32 @@ export AMBIENTE_INICIALIZADO=1
 echo ""
 echo "El ambiente ha sido inicializado exitosamente."
 $BINDIR/GrabarBitacora PrepararAmbiente "Ambiente inicializado OK" INFO
+
+function iniciar_recibir_ofertas {
+  echo "Iniciando el servicio de escucha de ofertas."
+  if [ -f "$BINDIR/RecibirOfertas" ] && [ -x "$BINDIR/RecibirOfertas" ]; then
+    $BINDIR/LanzarProceso -s -b -c RecibirOfertas
+  else
+    echoerr "RecibirOfertas no existe o no es ejecutable."
+    return 1
+  fi
+}
+
+function informar_sobre_lanzar_proceso {
+  echo "RecibirOfertas no se iniciará en este momento;"
+  echo "Para iniciar el servicio, use LanzarProceso."
+}
+
+function iniciar_escuchar_ofertas {
+    while true; do
+      read -p "¿Desea iniciar el servicio de escucha de ofertas? si/no " sino
+      case $sino in
+        [si]* ) echo ""; if ! iniciar_recibir_ofertas; then return 1; fi; break;;
+        [no]* ) echo ""; informar_sobre_lanzar_proceso; break;;
+        * ) echo "Por favor, responder si o no.";;
+      esac
+    done
+}
 
 iniciar_escuchar_ofertas
 return $?
