@@ -6,6 +6,7 @@ use Getopt::Long;
 use Getopt::Long qw(GetOptionsFromString);
 use List::Util qw(first);
 use Data::Dumper;
+use Fcntl qw(:flock);
 
 my $help="";
 my $grabar="";
@@ -31,15 +32,16 @@ my $confINFODIR="/home/nicolasdeciancio/tp-sisop/INFODIR";
 Getopt::Long::Configure('bundling','no_ignore_case');
 
 verificar_variables_de_ambiente();
+			esta_corriendo();
 
 if (@ARGV > 0){
 	while(1){
 		my $llamada_valida=GetOptions('a|ayuda' => \$help ,'g' => \$grabar ,'r=s' => \$ganSor, 'exit' => \$exit , 's=s' => \$sorteo , 'grupo=s' => \$grupoRef , 'l=s' => \$licitacion , 'p=s' => \$resultado);
 		
 		if($llamada_valida){
-			esta_corriendo();
 			cargar_directorios();
 			cargar_hashes();
+			hay_sorteos();
 			if ($help){
 				usage();
 			}
@@ -114,10 +116,24 @@ if (@ARGV > 0){
 	}
 }
 
+sub hay_sorteos{
+	my $dirname = "$confPROCDIR/sorteos";
+	opendir(DIR,$dirname) or die "No se encuentra o no se puede abrir el directorio $dirname\n";
+	my $contador = 0;
+	while(my $file = readdir(DIR)){
+		next if ($file =~ /^\.+$/);
+		if( ($file =~ /^($ganSor)\_\d+.csv\.*/) or ($file =~ /^($sorteo)\_\d+.csv\.*/) or ($file =~ /^($licitacion)\_\d+.csv\.*/) or ($file =~ /^($resultado)\_\d+.csv\.*/) ){
+			$contador = $contador + 1;
+		}
+	}
+	close(DIR);
+	die "No hay archivos de sorteos\n" if ($contador > 0);
+}
+
 #Esta funcion verifica si esta corriendo el proceso, si ya esta corriendo lo deja correr, sino no lo corre otra vez
 sub esta_corriendo {
 	my @processid = `pgrep DeterminarGanadores`;
-	if (@processid){
+	if (flock(DATA, LOCK_EX|LOCK_NB)){
 		print "el proceso ya esta corriendo\n";
 		exit 0;
 	}else{
@@ -197,7 +213,7 @@ sub restart{
 }
 
 sub cargar_directorios{
-	open(my $confCIPAL, "$ENV{CONFDIR}/CIPAL.cnf");
+	open(my $confCIPAL, "$ENV{'CONFDIR'}/CIPAL.cnf");
 	while( my $linea = <$confCIPAL>){
 		my @fields=split("=",$linea);
 		if(@fields[0] eq "PROCDIR"){
@@ -410,7 +426,7 @@ sub resultado_ganadores{
 	my @rango = split("-",$grupoRef);
 	my @varios = sort(split(",",$grupoRef));
 	if( $grupoRef eq "all" ){
-		foreach my $nroGrupo( sort keys %grupos){
+		foreach my $nroGrupo( keys %grupos){
 			if($sorteoResponse{$nroGrupo}){
 				print "$nroGrupo\-$sorteoResponse{$nroGrupo}[0] S ($sorteoResponse{$nroGrupo}[1])\n";
 				if ($grabar){
@@ -427,7 +443,7 @@ sub resultado_ganadores{
 	}else{
 		my $rango = @rango;
 		if( $rango == 2 ){
-			foreach my $nroGrupo( sort keys %grupos){
+			foreach my $nroGrupo( keys %grupos){
 				if ( @rango[0] <= $nroGrupo and @rango[1] >= $nroGrupo ){
 					if($sorteoResponse{$nroGrupo}){
 						print "$nroGrupo\-$sorteoResponse{$nroGrupo}[0] S ($sorteoResponse{$nroGrupo}[1])\n";
@@ -448,7 +464,7 @@ sub resultado_ganadores{
 			my $varios = @varios;
 			if( $varios >= 1 and $grupoRef ne "all" ){
 				foreach my $grupo(@varios){
-					foreach my $nroGrupo( sort keys %grupos){
+					foreach my $nroGrupo( keys %grupos){
 						if ( $grupo == $nroGrupo ){
 							if($sorteoResponse{$nroGrupo}){
 								print "$nroGrupo\-$sorteoResponse{$nroGrupo}[0] S ($sorteoResponse{$nroGrupo}[1])\n";
